@@ -10,7 +10,7 @@ We address the ineffectiveness of knowledge distillation when teacher and studen
 
 1. **Clone the repository**:
 ```bash
-git clone <repository-url>
+git clone git@github.com:AtharvaTambat/MC-Distil.git
 cd MC-Distil
 ```
 
