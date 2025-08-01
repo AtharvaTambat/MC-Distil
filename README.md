@@ -4,7 +4,7 @@
 
 ## Abstract
 
-We address the ineffectiveness of knowledge distillation when teacher and student models have significant capacity gaps via **"meta-collaborative distillation" (MC-Distil)**, where students of varying capacities collaborate during distillation using a "coordinator" network (C-Net). We achieve **average gains of 2.5% on CIFAR-100 and 2% on Tiny ImageNet** with only **5% training overhead** and **no inference cost**.
+We address the ineffectiveness of knowledge distillation when teacher and student models have significant capacity gaps via **"meta-collaborative distillation" (MC-Distil)**, where students of varying capacities collaborate during distillation using a "coordinator" network (C-Net). We achieve **average gains of 2.5% on CIFAR-100 and 2% on Tiny ImageNet** with mere **5% training overhead** and **no extra inference cost**.
 
 ## Installation
 
