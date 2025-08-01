@@ -56,7 +56,7 @@ bash runner_meta.sh
 ## Dataset Preparation
 
 ### Supported Datasets
-- **CIFAR-10/100**: Automatically downloaded
+- **CIFAR-10/100**: Automatically downloaded ([official source](http://www.cs.toronto.edu/~kriz/cifar.html))
 - **Tiny ImageNet**: Download from [official source](http://cs231n.stanford.edu/tiny-imagenet-200.zip)
 - **Custom datasets**: Support for standard PyTorch datasets
 
