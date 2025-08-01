@@ -77,20 +77,6 @@ unzip tiny-imagenet-200.zip
 cd ..
 ```
 
-
-## Citation
-
-If you find this work useful, please cite our paper:
-
-```bibtex
-@article{mc_distil2024,
-  title={Meta-Collaborative Distillation for Knowledge Distillation},
-  author={[Authors]},
-  journal={[Journal/Conference]},
-  year={2024}
-}
-```
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
