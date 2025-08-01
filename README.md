@@ -35,14 +35,20 @@ python -c "import mc_distil; print('MC-Distil installed successfully!')"
 
 ## Usage
 
+**Note**: Before running the scripts, open the `.sh` files in `mc_distil/scripts/` and modify the input parameters (dataset path, model names, batch size, etc.) according to your setup.
+
 ### Standard Knowledge Distillation (Baseline)
 ```bash
+# 1. Edit parameters in runner_kd.sh as needed
+# 2. Run the script
 cd mc_distil/scripts
 bash runner_kd.sh
 ```
 
 ### MC-Distil (Our Method)
 ```bash
+# 1. Edit parameters in runner_meta.sh as needed  
+# 2. Run the script
 cd mc_distil/scripts
 bash runner_meta.sh
 ```
