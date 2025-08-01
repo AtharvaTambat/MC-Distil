@@ -1,6 +1,6 @@
 # MC-Distil: Meta-Collaborative Distillation
 
-**Official PyTorch implementation of "Meta-Collaborative Distillation for Knowledge Distillation"**
+**Official PyTorch implementation of "Unified Wisdom: Harnessing Collaborative Learning to Improve Efficacy of Knowledge Distillation"**
 
 ## Abstract
 
