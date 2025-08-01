@@ -1,0 +1,27 @@
+name: mc-distil
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python>=3.7,<3.11
+  - pytorch>=1.8.0
+  - torchvision>=0.9.0
+  - cudatoolkit=11.3  # Adjust based on your CUDA version
+  - numpy>=1.19.0
+  - scipy>=1.6.0
+  - pandas>=1.2.0
+  - pillow>=8.0.0
+  - matplotlib>=3.3.0
+  - pytz>=2021.1
+  - jupyter
+  - ipykernel
+  - pip
+  
+  - pip:
+    - timm>=0.4.0
+
+# To create environment: conda env create -f environment.yml
+# To activate: conda activate mc-distil
+# To update: conda env update -f environment.yml --prune
