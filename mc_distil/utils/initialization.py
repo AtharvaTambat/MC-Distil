@@ -4,7 +4,7 @@
 import os, sys, torch, random, PIL, copy, numpy as np
 from os import path as osp
 from shutil import copyfile
-
+from logging import Logger
 
 def prepare_seed(rand_seed):
     random.seed(rand_seed)
@@ -13,10 +13,8 @@ def prepare_seed(rand_seed):
     torch.cuda.manual_seed(rand_seed)
     torch.cuda.manual_seed_all(rand_seed)
 
-
 def prepare_logger(xargs):
     args = copy.deepcopy(xargs)
-    from log_utils import Logger
 
     if hasattr(args, 'file_name'):
         logger = Logger(args.save_dir, args.rand_seed, args.file_name)

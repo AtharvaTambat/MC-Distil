@@ -1,11 +1,9 @@
-#
 import os, json
 from os import path as osp
 from pathlib import Path
 from collections import namedtuple
 
 support_types = ("str", "int", "bool", "float", "none")
-
 
 def convert_param(original_lists):
     assert isinstance(original_lists, list), "The type is not right : {:}".format(

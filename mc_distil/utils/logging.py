@@ -4,6 +4,8 @@ from pathlib import Path
 import importlib, warnings
 import os, sys, time, numpy as np
 import datetime, pytz
+from io import StringIO, BytesIO
+
 if sys.version_info.major == 2:  # Python 2.x
     from StringIO import StringIO as BIO
 else:  # Python 3.x
@@ -74,37 +76,6 @@ class ProgressMeter(object):
         return '[' + fmt + '/' + fmt.format(num_batches) + ']'
 
 
-
-
-
-
-'''class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0.0
-        self.avg = 0.0
-        self.sum = 0.0
-        self.count = 0.0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-    def __repr__(self):
-        return "{name}(val={val}, avg={avg}, count={count})".format(
-            name=self.__class__.__name__, **self.__dict__
-        )
-'''
-
-
-
-
 class PrintLogger(object):
     def __init__(self):
         """Create a summary writer logging to log_dir."""
@@ -126,7 +97,6 @@ class Logger(object):
         self.log_dir.mkdir(parents=True, exist_ok=True)
         if create_model_dir:
             self.model_dir.mkdir(parents=True, exist_ok=True)
-        # self.meta_dir.mkdir(mode=0o775, parents=True, exist_ok=True)
 
         now = datetime.datetime.utcnow()
         now_ist = now.astimezone(pytz.timezone("Asia/Kolkata"))
@@ -139,7 +109,7 @@ class Logger(object):
         self.tensorboard_dir = self.log_dir / (
             "tensorboard-{:}".format(date_hour_minute)
         )
-        # self.tensorboard_dir = self.log_dir / ('tensorboard-{:}'.format(time.strftime( '%d-%h-at-%H:%M:%S', time.gmtime(time.time()) )))
+
         self.logger_path = self.log_dir / name
         self.logger_file = open(self.logger_path, "w")
 

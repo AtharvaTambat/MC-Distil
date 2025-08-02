@@ -20,20 +20,16 @@ def obtain_accuracy(output, target, topk=(1,)):
     return res
 
 class CELoss(object):
-
     def compute_bin_boundaries(self, probabilities = np.array([])):
-
-        #uniform bin spacing
+        # uniform bin spacing
         if probabilities.size == 0:
             bin_boundaries = np.linspace(0, 1, self.n_bins + 1)
             self.bin_lowers = bin_boundaries[:-1]
             self.bin_uppers = bin_boundaries[1:]
         else:
-            #size of bins 
+            # size of bins 
             bin_n = int(self.n_data/self.n_bins)
-
             bin_boundaries = np.array([])
-
             probabilities_sort = np.sort(probabilities)  
 
             for i in range(0,self.n_bins):
@@ -45,7 +41,7 @@ class CELoss(object):
 
 
     def get_probabilities(self, output, labels, logits):
-        #If not probabilities apply softmax!
+        # If not probabilities apply softmax!
         if logits:
             self.probabilities = softmax(output, axis=1)
         else:
@@ -58,10 +54,9 @@ class CELoss(object):
 
     def binary_matrices(self):
         idx = np.arange(self.n_data)
-        #make matrices of zeros
+        # make matrices of zeros
         pred_matrix = np.zeros([self.n_data,self.n_class])
         label_matrix = np.zeros([self.n_data,self.n_class])
-        #self.acc_matrix = np.zeros([self.n_data,self.n_class])
         pred_matrix[idx,self.predictions] = 1
         label_matrix[idx,self.labels] = 1
 
@@ -100,26 +95,22 @@ class MaxProbCELoss(CELoss):
         super().compute_bins()
 
 class ECELoss(MaxProbCELoss):
-
     def loss(self, output, labels, n_bins = 15, logits = True):
         super().loss(output, labels, n_bins, logits)
         return np.dot(self.bin_prop,self.bin_score)
 
 class MCELoss(MaxProbCELoss):
-    
     def loss(self, output, labels, n_bins = 15, logits = True):
         super().loss(output, labels, n_bins, logits)
         return np.max(self.bin_score)
 
 class OELoss(MaxProbCELoss):
-
     def loss(self, output, labels, n_bins = 15, logits = True):
         super().loss(output, labels, n_bins, logits)
         return np.dot(self.bin_prop,self.bin_conf * np.maximum(self.bin_conf-self.bin_acc,np.zeros(self.n_bins)))
 
 
 class SCELoss(CELoss):
-
     def loss(self, output, labels, n_bins = 15, logits = True):
         sce = 0.0
         self.n_bins = n_bins
@@ -137,7 +128,6 @@ class SCELoss(CELoss):
         return sce/self.n_class
 
 class TACELoss(CELoss):
-
     def loss(self, output, labels, threshold = 0.01, n_bins = 15, logits = True):
         tace = 0.0
         self.n_bins = n_bins
@@ -155,27 +145,21 @@ class TACELoss(CELoss):
 
         return tace/self.n_class
 
-#create TACELoss with threshold fixed at 0
+# create TACELoss with threshold fixed at 0
 class ACELoss(TACELoss):
-
     def loss(self, output, labels, n_bins = 15, logits = True):
         return super().loss(output, labels, 0.0 , n_bins, logits)
-
-
-
-
 
 def count_parameters_in_MB(model):
     return count_parameters(model, "mb")
 
-
 def count_parameters(model_or_parameters, unit="mb"):
     if isinstance(model_or_parameters, nn.Module):
         counts = sum(np.prod(v.size()) for v in model_or_parameters.parameters())
-    elif isinstance(models_or_parameters, nn.Parameter):
-        counts = models_or_parameters.numel()
-    elif isinstance(models_or_parameters, (list, tuple)):
-        counts = sum(count_parameters(x, None) for x in models_or_parameters)
+    elif isinstance(model_or_parameters, nn.Parameter):
+        counts = model_or_parameters.numel()
+    elif isinstance(model_or_parameters, (list, tuple)):
+        counts = sum(count_parameters(x, None) for x in model_or_parameters)
     else:
         counts = sum(np.prod(v.size()) for v in model_or_parameters)
     if unit.lower() == "kb" or unit.lower() == "k":
@@ -190,18 +174,14 @@ def count_parameters(model_or_parameters, unit="mb"):
 
 
 def get_model_infos(model, shape):
-    # model = copy.deepcopy( model )
-
     model = add_flops_counting_methods(model)
-    # model = model.cuda()
+    model = model.cuda()
     model.eval()
 
-    # cache_inputs = torch.zeros(*shape).cuda()
-    # cache_inputs = torch.zeros(*shape)
     cache_inputs = torch.rand(*shape)
     if next(model.parameters()).is_cuda:
         cache_inputs = cache_inputs.cuda()
-    # print_log('In the calculating function : cache input size : {:}'.format(cache_inputs.size()), log)
+
     with torch.no_grad():
         _____ = model(cache_inputs)
     FLOPs = compute_average_flops_cost(model) / 1e6
@@ -217,13 +197,12 @@ def get_model_infos(model, shape):
         )
         Param = Param - aux_params
 
-    # print_log('FLOPs : {:} MB'.format(FLOPs), log)
     torch.cuda.empty_cache()
     model.apply(remove_hook_function)
     return FLOPs, Param
 
 
-# ---- Public functions
+# ---- Public functions ----
 def add_flops_counting_methods(model):
     model.__batch_counter__ = 0
     add_batch_counter_hook_function(model)
@@ -251,7 +230,7 @@ def compute_average_flops_cost(model):
     return flops_sum / batches_count
 
 
-# ---- Internal functions
+# ---- Internal functions ----
 def pool_flops_counter_hook(pool_module, inputs, output):
     batch_size = inputs[0].size(0)
     kernel_size = pool_module.kernel_size
@@ -382,19 +361,19 @@ def remove_hook_function(module):
 def mcd_loss(net, input, n_evals=5):
 
     mc_samples = [net(input)[1] for _ in range(n_evals)]
-    mc_samples = torch.stack(mc_samples) #(n_evals, B, classes)
-    std_pred = torch.std(mc_samples, dim=0) #(B, classes)
+    mc_samples = torch.stack(mc_samples) # (n_evals, B, classes)
+    std_pred = torch.std(mc_samples, dim=0) # (B, classes)
     std_pred = torch.sum(std_pred)/(input.shape[0]*mc_samples.shape[-1])
     return std_pred
 
 def variance_loss(logits):
-    
     stacked_tensor = torch.stack(logits, dim=0)
     elementwise_variance = torch.var(stacked_tensor, dim=0)
 
     min_val = torch.min(elementwise_variance)
     max_val = torch.max(elementwise_variance)
-    #scaled_variance = (elementwise_variance - min_val) / (max_val - min_val) 
-    #More variance more diffecult the point...
+
+    # More variance more difficult the point.
+    scaled_variance = (elementwise_variance - min_val) / (max_val - min_val) 
     
     return elementwise_variance
