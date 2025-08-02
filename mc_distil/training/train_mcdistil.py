@@ -1,43 +1,54 @@
-import os, sys, time, torch, random, argparse, json, pickle, torch, copy
+import os
+import sys
+import time
+import json
+import copy
+import torch
+import random
+import pickle
+import argparse
 import itertools
-from collections import namedtuple
+import datetime
+import pytz
+
 import numpy as np
 import pandas as pd
-import datetime, pytz
-import torch.optim as optim
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from torch import nn
-from torch import Tensor
-from torch.distributions import Categorical
-from torch.utils.data import Dataset, random_split
+
+from pathlib import Path
+from collections import namedtuple
 from typing import Type, Any, Callable, Union, List, Optional
+
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-import copy
-from copy import deepcopy
-from pathlib import Path
-from ..models.new_models import FullyConnectedNetwork
-import matplotlib.pyplot as plt
+
+import torch.nn.functional as F
+import torch.optim as optim
+from torch import nn, Tensor
+from torch.distributions import Categorical
+from torch.utils.data import Dataset, random_split
+import torch.utils.data as data
 import torchvision.models as models
 
+from ..models.new_models import FullyConnectedNetwork
 from ..models.model_dict import get_model_from_name
-from ..utils.core import get_model_infos
-from ..utils.logging import AverageMeter, ProgressMeter, time_string, convert_secs2time
+from ..utils.core import (
+    get_model_infos, time_string, convert_secs2time
+)
+from ..utils.logging import AverageMeter, ProgressMeter
 from ..utils.initialization import prepare_logger, prepare_seed
-from ..data.datasets import get_datasets
-import torch.utils.data as data
+from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
+from ..data.get_dataset_with_transform import get_datasets
 from .meta import *
 from ..models.base import *
-from ..utils.core import *
-from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
 
-def m__get_prefix( args ):
+
+def m__get_prefix(args):
     prefix = args.file_name + '_' + args.dataset + '-' + args.model_name
     return prefix
 
-def get_model_prefix( args ):
-    prefix = os.path.join(args.save_dir, m__get_prefix( args ) )
+def get_model_prefix(args):
+    prefix = os.path.join(args.save_dir, m__get_prefix(args))
     return prefix
 
 def cifar_100_train_eval_loop( args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval' ):
@@ -82,7 +93,7 @@ def main(args):
     assert torch.cuda.is_available(), "CUDA is not available."
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
-    # torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.deterministic = True
     torch.set_num_threads(args.workers)
     logger = prepare_logger(args)
     prepare_seed(args.rand_seed)
@@ -92,21 +103,12 @@ def main(args):
     
     dataset=args.dataset
     if dataset=="cifar100" or dataset=="cifar10":
-        
-        train_data, test_data, xshape, class_num = get_datasets(
-        args.dataset, args.data_path, args.cutout_length
-        )
-        train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//10, 
-                                                            len(train_data)//10])
-    
-    
+        train_data, test_data, xshape, class_num = get_datasets(args.dataset, args.data_path, args.cutout_length)
+        train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//10, len(train_data)//10])
     else:
-        train_data, test_data, xshape, class_num = get_datasets(
-        args.dataset, args.data_path, args.cutout_length
-        )
+        train_data, test_data, xshape, class_num = get_datasets(args.dataset, args.data_path, args.cutout_length)
         train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//5,  len(train_data)//5])
         test_data, valid_data = data.random_split(valid_data, [len(valid_data)-len(valid_data)//2,  len(valid_data)//2])
-    
     
     train_loader = torch.utils.data.DataLoader(
         train_data,
@@ -136,10 +138,7 @@ def main(args):
         num_workers=args.workers,
         pin_memory=True,
     )
-    meta_dataloader_iter = iter(train_loader)
-    meta_dataloader_s_iter = iter(valid_loader)
-  
-    
+    meta_dataloader_iter = iter(train_loader)    
     args.class_num = class_num
     
     logger.log(args.__str__())
@@ -151,20 +150,14 @@ def main(args):
     md_dict = { 'class_num' : class_num, 'dataset' : args.dataset }
     model_config = Arguments(**md_dict)
 
-
-    # creating multiple STUDENTs.......
+    # creating multiple STUDENTs
     model_name = [ "ResNet10_xxxs","ResNet10_xxs","ResNet10_xs","ResNet10_s","ResNet10_m" ]
     k= len(model_name)
-    # HERE YOU FIND MODE
-    Mode= 1
-    tensor_size= class_num
-    
-    #image_encoder = ImageEncoder()
-    #image_encoder=image_encoder.cuda()
-    
+
+    # set mode here
+    Mode= 1    
     image_encoder=models.resnet18(pretrained=True).cuda()
     image_encoder = nn.Sequential(*list(image_encoder.children())[:-1])
-    
     
     base_model= [i for i in range(k)]
     network= [i for i in range(k)]
@@ -174,16 +167,12 @@ def main(args):
         base_model[i] = get_model_from_name( model_config, model_name[i] )
         logger.log("Student {} + {}:".format(i, model_name[i]) )
     
-
-    
         ce_ptrained_path = "./ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
                             "model_best.pth.tar".format(args.rand_seed,
-                                                        # args.sched_cycles,
                                                         args.dataset,
                                                         model_name[i])
     
-      
-        # Loading multiple students from pretrained student......  
+        # Loading multiple students from pretrained student  
         logger.log("using pretrained student model from {}".format(ce_ptrained_path))
                         
         if args.pretrained_student: # load CE-pretrained student
@@ -191,17 +180,14 @@ def main(args):
         base_checkpoint = torch.load(ce_ptrained_path)
         base_model[i].load_state_dict(base_checkpoint["base_state_dict"])
             
-    
     for i in range(k):
         base_model[i] = base_model[i].cuda()
         network[i] = base_model[i] 
+        best_state_dict[i] = copy.deepcopy(base_model[i].state_dict())
         
-        best_state_dict[i] = copy.deepcopy( base_model[i].state_dict() )
-        
-      
-    #testing pretrained student
+    # testing pretrained student
     for i in range(k):
-        test_loss, test_acc1, test_acc5 = evaluate_model( network[i], test_loader, criterion, args.eval_batch_size )
+        test_loss, test_acc1, test_acc5 = evaluate_model(network[i], test_loader, criterion, args.eval_batch_size)
         logger.log(
         "***{:s}*** before training [Student(CE)] {} Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
             time_string(),i,
@@ -213,24 +199,20 @@ def main(args):
         )
         )
     
-    # lr = args.lr
     optimizer_s=[i for i in range(k)]
     scheduler_s=[i for i in range(k)]
     
     for i in range(k):
         optimizer_s[i] = torch.optim.SGD(base_model[i].parameters(), args.lr, momentum=args.momentum, weight_decay=args.wd)
         scheduler_s[i] = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer_s[i], args.epochs//args.sched_cycles)
-        logger.log("Scheduling LR update to student no {}, {} time at {}-epoch intervals".format(k,args.sched_cycles, 
-                                                                                        args.epochs//args.sched_cycles))
+        logger.log("Scheduling LR update to student no {}, {} time at {}-epoch intervals".format(k,args.sched_cycles, args.epochs//args.sched_cycles))
 
     # TEACHER
-    Teacher_model = get_model_from_name( model_config, args.teacher )
-    model_name_t = args.teacher
+    Teacher_model = get_model_from_name(model_config, args.teacher)
     teach_PATH = "./ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
                     "model_best.pth.tar".format(args.rand_seed,
                                                 args.dataset,
                                                 args.teacher)
-                    
                     
     teach_checkpoint = torch.load(teach_PATH)
     Teacher_model.load_state_dict(teach_checkpoint['base_state_dict'])
@@ -239,7 +221,7 @@ def main(args):
     network_t.eval()
     logger.log("Teacher loaded....")
     
-    #testing teacher
+    # testing teacher
     test_loss, test_acc1, test_acc5 = evaluate_model( network_t, test_loader, nn.CrossEntropyLoss(), args.eval_batch_size )
     logger.log(
         "***{:s}*** [Teacher] Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
@@ -259,51 +241,42 @@ def main(args):
     logger.log("[Student]Params={:.2f} MB, FLOPs={:.2f} M ... = {:.2f} G".format(
             param, flop, flop / 1e3))
 
-    
     # METANET
-    if not args.inst_based: # inst_based is True, inst_based checks if our metanet will get instance-wise
-        meta_net = MLP(hidden_size=args.meta_net_hidden_size,num_layers=args.meta_net_num_layers).to(device=args.device)
-    elif args.meta_type == 'meta_lite':
+    if args.meta_type == 'meta_lite':
         meta_net = InstanceMetaNetLite(num_layers=1).cuda()
-        # meta_net = copy.deepcopy(network)
     elif args.meta_type == 'instance':
         logger.log("Using Instance metanet....")
         meta_net = InstanceMetaNet(input_size=args.input_size).cuda()
     else:
         if Mode==1:
-            # img to Resnet....
-            
+            # Image is fed directly to ResNet
             Arguments_meta = namedtuple("Configure", ('class_num','dataset')  )
             md_dict_meta = { 'class_num' : 2*k, 'dataset' : args.dataset }
             model_config_meta = Arguments_meta(**md_dict_meta)
             meta_net= get_model_from_name( model_config_meta, "ResNet10_s" )
             meta_net= meta_net.cuda()
-            #meta_net = ResNet32MetaNet().cuda()
-            
         if Mode==2:
-            # Encoded img to resnet
+            # Encoded img to ResNet
             meta_net = ResNet32MetaNet().cuda()
-            
         if Mode==3:
-            #Encoded img to FC
+            # Encoded img to FC Layer
             meta_net = FullyConnectedNetwork(512,[128,256,517,1024,128], 2*k ).cuda()
-            
         if Mode==4:
             # Logits to FC
             meta_net = FullyConnectedNetwork(100*k,[128,256,512,1024,2048,1000,500,200,100,50,25,10], 2*k ).cuda()
         if Mode==5:
-            # Logits+ Encoded img  to FC
+            # Logits + Encoded img to FC
             meta_net = FullyConnectedNetwork(512+100*k,[128,256,512,1024,2048,1000,500,200,100,50,25,10], 2*k ).cuda()
         if Mode==6:
-            # Logits+ Encoded img  to Resnet
+            # Logits + Encoded img to ResNet
             meta_net = ResNet32MetaNet().cuda()
             
     meta_optimizer = torch.optim.Adam(meta_net.parameters(), lr=args.meta_lr, weight_decay=args.meta_weight_decay)
 
     best_acc, best_epoch = 0.0, 0
     val_losses = []
-    alphas_collection = [ [] for i in range(k)]
-    betas_collection = [ [] for i in range(k)]
+    alphas_collection = [[] for i in range(k)]
+    betas_collection = [[] for i in range(k)]
       
     Temp = args.temperature
     log_file_name = get_model_prefix( args )
@@ -326,14 +299,10 @@ def main(args):
                     [losses[i], top1[i], top5[i]],
                     prefix="[{}] E: [{}]".format(mode.upper(), epoch))
         
-        
-        
-        
-        
         for iteration, (inputs, labels) in enumerate(train_loader):
             inputs = inputs.cuda()
             targets = labels.cuda(non_blocking=True)
-            #train metanet
+            # train metanet
             if (iteration + 1) % args.meta_interval == 0:
                 pseudo_net= [i for i in range(k)]
                 features= [i for i in range(k)]
@@ -356,7 +325,6 @@ def main(args):
                 pseudo_loss_vector_CE= [ i for i in range(k)]
                 for i in range(k):
                     pseudo_loss_vector_CE[i]= criterion_indiv(pseudo_outputs[i], targets) # [B]
-                    #pseudo_loss_vector_CE_reshape = torch.reshape(pseudo_loss_vector_CE, (-1, 1)) # [B, 1]
                 
                 if args.meta_type == 'meta_lite':
                     pseudo_hyperparams = meta_net(features)    
@@ -369,29 +337,22 @@ def main(args):
                         with torch.no_grad():
                             image_features= torch.cat((image_features, image_features), dim=1)
                             image_features=image_features.squeeze().view(image_features.shape[0], 32, 32).unsqueeze(1).expand(-1, 3, -1, -1)
-                        
                             pseudo_hyperparams = meta_net(image_features)
-                    
                     if Mode==3:
                         with torch.no_grad():
                             pseudo_hyperparams = meta_net(image_features.squeeze())
-                            
                     if Mode==4:
                         with torch.no_grad():
                             encoded_img= tensors[0]
                             for i in range(k-1):
                                 encoded_img= torch.cat([ encoded_img,tensors[i+1]], dim=1)
-                                #encoded_img= torch.cat([ encoded_img,tensors[i+1].view(-1, 1)], dim=1)
                             pseudo_hyperparams = meta_net(encoded_img)
                     if Mode==5:
                         with torch.no_grad():
                             encoded_img= image_features.squeeze()
                             for i in range(k):
-                                #tensors[i]= torch.mean( tensors[i])
                                 encoded_img= torch.cat([ encoded_img,tensors[i]], dim=1)
-                                #encoded_img= torch.cat([ encoded_img,tensors[i+1].view(-1, 1)], dim=1)
                             pseudo_hyperparams = meta_net(encoded_img)
-                            
                     if Mode==6:
                         with torch.no_grad():
                             encoded_img= image_features.squeeze()
@@ -401,53 +362,45 @@ def main(args):
                             encoded_img= torch.cat([ encoded_img,zeros_tensor], dim=1)
                             encoded_img=encoded_img.unsqueeze(1).unsqueeze(2)
                             encoded_img=encoded_img.reshape(encoded_img.shape[0],32, 32).unsqueeze(1).expand(-1, 3, -1, -1)
-                            
                             pseudo_hyperparams = meta_net(encoded_img)
                             
-                
                 alpha = [i for i in range(k)]
                 beta = [i for i in range(k)]
-                
                 
                 for i in range(k):
                     alpha[i] = pseudo_hyperparams[:,2*i]
                     beta[i] = pseudo_hyperparams[:,2*i+1]
                     
-                
                 Temp = args.temperature
                 pseudo_loss_vector_KD= [ i for i in range(k)]
                 for i in range(k):
-                    pseudo_loss_vector_KD[i]= nn.KLDivLoss(reduction='none')(             # [B x n]
-                                    F.log_softmax(pseudo_outputs[i] / Temp, dim=1),
-                                    F.softmax(teacher_outputs / Temp, dim=1))
+                    pseudo_loss_vector_KD[i]= nn.KLDivLoss(reduction='none')(F.log_softmax(pseudo_outputs[i] / Temp, dim=1),
+                                                                             F.softmax(teacher_outputs / Temp, dim=1))
                 
-                
-                #LOSS Update....
+                # Loss Update
                 loss_CE=[i for i in range(k)]
                 loss_KD=[i for i in range(k)]
-                
                 
                 pseudo_loss= [i for i in range(k)]
                 for i in range(k):
                     loss_CE[i] = torch.mean( alpha[i]*pseudo_loss_vector_CE[i] )
                     loss_KD[i] = (Temp**2)* torch.mean( beta[i] * torch.sum(pseudo_loss_vector_KD[i],dim=1))
-                    
                     pseudo_loss[i] = loss_CE[i] + loss_KD[i] 
-                
                 pseudo_grads=[i for i in range(k)]
                 
                 for i in range(k):
                     pseudo_grads[i] = torch.autograd.grad(pseudo_loss[i], pseudo_net[i].parameters(), create_graph=True)
 
-                    # using the current student's LR to train pseudo
+                    # using the current student's LR to train pseudo network
                     base_model_lr = optimizer_s[i].param_groups[0]['lr']
                     pseudo_optimizer = MetaSGD(pseudo_net[i], pseudo_net[i].parameters(), lr=base_model_lr)
                     pseudo_optimizer.load_state_dict(optimizer_s[i].state_dict())
                     pseudo_optimizer.meta_step(pseudo_grads[i])
 
+                # To save space on CPU
                 del pseudo_grads
 
-                # NOW, do metanet descent
+                # metanet descent
                 # cycle through the metadata used for validation
                 try:
                     valid_inputs, valid_labels = next(meta_dataloader_iter)
@@ -455,21 +408,15 @@ def main(args):
                     meta_dataloader_iter = iter(meta_loader)
                     valid_inputs, valid_labels = next(meta_dataloader_iter)
 
-                
                 valid_inputs, valid_labels = valid_inputs.cuda(), valid_labels.cuda()
                 
-                # CHECK META LOSSSS.....
-                meta_loss =0
+                # Calculate MetaNet Loss
+                meta_loss = 0
                 meta_output=[]
                 for i in range(k):
                     _,meta_outputs,_ = pseudo_net[i](valid_inputs) # apply the stepped pseudo net on the validation data
                     meta_output.append(meta_outputs)
-                    meta_loss += torch.mean(criterion_indiv(meta_outputs, valid_labels.long())) + \
-                                args.mcd_weight*mcd_loss(pseudo_net[i], valid_inputs) 
-
-                    #print("MCD ",mcd_loss(pseudo_net[i], valid_inputs) )
-                #print(meta_loss)
-                #meta_loss+= torch.mean(variance_loss(meta_output ))
+                    meta_loss += torch.mean(criterion_indiv(meta_outputs, valid_labels.long()))
                 meta_optimizer.zero_grad()
                 meta_loss.backward()
                 meta_optimizer.step()
@@ -482,11 +429,7 @@ def main(args):
                 features[i], logits[i], _ = network[i](inputs)
             with torch.no_grad():
                 _,teacher_outputs , _ = network_t(inputs)
-            
-            #print(logits[0].size(),logits[0][0].size())
-            #print(logits[0][0])
-            with torch.no_grad():
-                    
+
                 if args.meta_type == 'meta_lite':
                     hyperparams = meta_net(features)    
                 else:
@@ -498,32 +441,22 @@ def main(args):
                         with torch.no_grad():
                             image_features= torch.cat((image_features, image_features), dim=1)
                             image_features=image_features.squeeze().view(image_features.shape[0], 32, 32).unsqueeze(1).expand(-1, 3, -1, -1)
-                            print(image_features.size())
                             hyperparams = meta_net(image_features)
-                    
                     if Mode==3:
                         with torch.no_grad():
-                            print(image_features.size())
                             hyperparams = meta_net(image_features.squeeze())
-                            
                     if Mode==4:
                         with torch.no_grad():
                             encoded_img= tensors[0]
                             for i in range(k-1):
                                 encoded_img= torch.cat([ encoded_img,tensors[i+1]], dim=1)
-                                #encoded_img= torch.cat([ encoded_img,tensors[i+1].view(-1, 1)], dim=1)
-                            print(encoded_img.size())
                             hyperparams = meta_net(encoded_img)
                     if Mode==5:
                         with torch.no_grad():
                             encoded_img= image_features.squeeze()
                             for i in range(k):
-                                #tensors[i]= torch.mean( tensors[i])
                                 encoded_img= torch.cat([ encoded_img,tensors[i]], dim=1)
-                                #encoded_img= torch.cat([ encoded_img,tensors[i+1].view(-1, 1)], dim=1)
-                            print(encoded_img.size())
                             hyperparams = meta_net(encoded_img)
-                            
                     if Mode==6:
                         with torch.no_grad():
                             encoded_img= image_features.squeeze()
@@ -533,19 +466,15 @@ def main(args):
                             encoded_img= torch.cat([ encoded_img,zeros_tensor], dim=1)
                             encoded_img=encoded_img.unsqueeze(1).unsqueeze(2)
                             encoded_img=encoded_img.reshape(encoded_img.shape[0],32, 32).unsqueeze(1).expand(-1, 3, -1, -1)
-                            
-                            print(encoded_img.size())
                             hyperparams = meta_net(encoded_img)
-                            
-                
-                    
+
+            # Insialize the loss weights 
             alpha = [i for i in range(k)]
             beta = [i for i in range(k)] 
             
             alphas = [i for i in range(k)]
             betas = [i for i in range(k)]
-            #print(hyperparams.size(),hyperparams[0][0].size())
-            #print(hyperparams)
+
             for j in range(k):
                 alpha[j] = hyperparams[:,2*j]
                 beta[j] = hyperparams[:,2*j +1]
@@ -559,22 +488,12 @@ def main(args):
                 else:
                     alphas[j] = torch.cat((alphas[j].cpu() ,alpha[j].cpu()), dim =0)
                     betas[j] = torch.cat((betas[j].cpu() ,beta[j].cpu()), dim =0)
-                    
-            #loss_vector_KD= [ i for i in range(k)]
-            
-            #LOSS Update...
-            #loss_CE= [i for i in range(k)]  #torch.tensor()
-            #loss_KD=[i for i in range(k)]  #torch.tensor()
-            
-            #torch.autograd.set_detect_anomaly(True)
 
             for i in range(k):
-                #features, logits, _ = network[i](inputs)
                 optimizer_s[i].zero_grad()
                 loss_vector = criterion_indiv(logits[i], targets)
                 loss_vector_KD= nn.KLDivLoss(reduction='none')(F.log_softmax(logits[i] / Temp, dim=1),\
                                                                F.softmax(teacher_outputs / Temp, dim=1))
-                
                 loss_CE= torch.mean( alpha[i]*loss_vector )
                 loss_KD = (Temp**2)* torch.mean( beta[i] * torch.sum(loss_vector_KD,dim=1))
                 
@@ -582,46 +501,23 @@ def main(args):
                 prec1, prec5 = obtain_accuracy(logits[i].data, targets.data, topk=(1, 5))
                 
                 loss.backward()
-                optimizer_s[i].step()
-                
-                #print(type(loss[i]))
-        
+                optimizer_s[i].step()        
                 
                 losses[i].update(loss.item(), inputs.size(0))
                 top1[i].update(prec1.item(), inputs.size(0))
                 top5[i].update(prec5.item(), inputs.size(0))
-                # scheduler_s.step(epoch+iteration/len(train_loader))
             for i in range(k):
                 if (iteration % args.print_freq == 0) or (iteration == len(train_loader)-1):
                     progress[i].display(iteration)
         
-        
-        
         if epoch%199==0 or epoch==args.epochs-1:
-            #log_alphas_collection.append(torch.log(alphas))
-            #log_betas_collection.append(torch.log(betas))
             for i in range(k):
                 alphas_collection[i].append(alphas[i])
                 betas_collection[i].append(betas[i])
         
-        '''
-        logger.log("alpha quartiles: \nq0\tq25\tq50\tq75\tq100\n{:.6f}\t{:.6f}\t{:.6f}\t{:.6f}\t{:.6f} with std {:.6f}".format(
-                                                                    torch.quantile(alphas, 0.0),
-                                                                    torch.quantile(alphas, 0.25),
-                                                                    torch.quantile(alphas, 0.5),
-                                                                    torch.quantile(alphas, 0.75),
-                                                                    torch.quantile(alphas, 1),
-                                                                    torch.std(alphas))) 
-        logger.log("beta quartiles: \nq0\tq25\tq50\tq75\tq100\n{:.6f}\t{:.6f}\t{:.6f}\t{:.6f}\t{:.6f} with std {:.6f}".format(
-                                                                        torch.quantile(betas, 0.0),
-                                                                        torch.quantile(betas, 0.25),
-                                                                        torch.quantile(betas, 0.5),
-                                                                        torch.quantile(betas, 0.75),
-                                                                        torch.quantile(betas, 1),
-                                                                        torch.std(betas)))   
-        '''
         for i in range(k):
             scheduler_s[i].step(epoch)
+
         best_acc= [0 for i in range(k)]
         for i in range(k):
             val_loss, val_acc1, val_acc5 = cifar_100_train_eval_loop( args, logger, epoch, optimizer_s[i], scheduler_s[i], network[i], valid_loader, criterion, args.eval_batch_size, mode='eval' )
@@ -641,14 +537,14 @@ def main(args):
                     'optimizer_s' : optimizer_s[i].state_dict(),
                 }, is_best, prefix=log_file_name)
             val_losses.append(val_loss)
-            logger.log('std {} Valid eval after epoch: loss:{:.4f}\tlatest_acc:{:.2f}\tLR:{:.4f} -- best valacc {:.2f}'.format( i,val_loss,
-                                                                                                                            val_acc1,
-                                                                                                                            get_mlr(scheduler_s[i]), 
-                                                                                                                            best_acc[i]))
+            logger.log('std {} Valid eval after epoch: loss:{:.4f}\tlatest_acc:{:.2f}\tLR:{:.4f} -- best valacc {:.2f}'.format(i,val_loss,
+                                                                                                                               val_acc1,
+                                                                                                                               get_mlr(scheduler_s[i]), 
+                                                                                                                               best_acc[i]))
 
     for i in range(k):
-        network[i].load_state_dict( best_state_dict[i] )
-        test_loss, test_acc1, test_acc5 = evaluate_model( network[i], test_loader, criterion, args.eval_batch_size )
+        network[i].load_state_dict(best_state_dict[i])
+        test_loss, test_acc1, test_acc5 = evaluate_model(network[i], test_loader, criterion, args.eval_batch_size)
         logger.log(
             "\n***{:s}*** [Post-train] [Student {}] Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
                 time_string(),i,
@@ -664,15 +560,8 @@ def main(args):
     plots_dir = os.path.join(args.save_dir, args.file_name)
     if not os.path.exists(plots_dir):
         os.mkdir(plots_dir)
-    """
-    # post valid loss
-    fig, ax = plt.subplots()
-    ax.plot(val_losses) 
-    ax.set_title('Validation Loss')
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Loss')   
-    fig.savefig(os.path.join(plots_dir, 'valid_loss.png'))
-    """
+
+    # Save the loss weights
     for i in range(k):
         with open(os.path.join(plots_dir, 'alpha_{}_{}.pkl'.format(model_name[i],i)), 'wb') as f:
             pickle.dump(alphas_collection, f)
@@ -700,7 +589,6 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=8, help="number of data loading workers (default: 8)")
     parser.add_argument("--rand_seed", type=int, help="base model seed")
     parser.add_argument("--global_rand_seed", type=int, default=-1, help="global model seed")
-    #add_shared_args(parser)
     parser.add_argument("--batch_size", type=int, default=400, help="Batch size for training.")
     parser.add_argument("--eval_batch_size", type=int, default=400, help="Batch size for testing.")
     parser.add_argument('--epochs', type=int, default=100,help='number of epochs to train')
@@ -711,13 +599,9 @@ if __name__ == "__main__":
     parser.add_argument('--label', type=str, default="",  help='give some label you want appended to log fil')
     parser.add_argument('--temperature', type=int, default=4,  help='temperature for KD')
     parser.add_argument('--sched_cycles', type=int, default=1,  help='How many times cosine cycles for scheduler')
-
     parser.add_argument('--file_name', type=str, default="",  help='file_name')
-    #parser.add_argument('--type', type=int, default="1",  help='if 1, using normal meta net, other wise custom(ip is op of stds)')
     
-    #####################################################################
-    
-    #parser.add_argument('--lr', type=float, default=.1)
+    ################################## MC-Distil specific arguments #####
     parser.add_argument('--inst_based', type=bool, default=True)
     parser.add_argument('--meta_interval', type=int, default=20)
     parser.add_argument('--mcd_weight', type=float, default=0.5)
@@ -725,7 +609,7 @@ if __name__ == "__main__":
     parser.add_argument('--input_size', type=int, default=32)
     parser.add_argument('--meta_lr', type=float, default=1e-3)
     parser.add_argument('--unsup_adapt', type=bool, default=False)
-    parser.add_argument('--meta_type', type=str, default='resnet') # or meta_lite or instance
+    parser.add_argument('--meta_type', type=str, default='resnet') # resnet, meta_lite, instance
     #####################################################################
     
     args = parser.parse_args()

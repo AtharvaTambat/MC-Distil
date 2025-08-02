@@ -1,31 +1,36 @@
-import os, sys, time, torch, random, argparse, json, copy
+import os
+import sys
+import time
+import json
+import random
+import argparse
 import itertools
-from collections import namedtuple
-import numpy as np
-import pandas as pd
-import torch
-import torch.optim as optim
-import torch.nn.functional as F
-from torch import nn
-from torch import Tensor
-from torch.distributions import Categorical
-import datetime, pytz
-from typing import Type, Any, Callable, Union, List, Optional
-from PIL import ImageFile
-import torch.utils.data as data
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True
+import datetime
+import pytz
 import copy
 from pathlib import Path
+from collections import namedtuple
+from typing import Type, Any, Callable, Union, List, Optional
 
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+from torch import nn, Tensor
+from torch.distributions import Categorical
+import torch.utils.data as data
 
 from ..models.model_dict import get_model_from_name
 from ..utils.core import get_model_infos
 from ..utils.logging import AverageMeter, ProgressMeter, time_string, convert_secs2time
 from ..utils.initialization import prepare_logger, prepare_seed
-from ..data.get_dataset_with_transform import get_datasets
 from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
+from ..data.get_dataset_with_transform import get_datasets
 
 def m__get_prefix(args):
     prefix = args.file_name + '_' + args.dataset + '-' + args.model_name
@@ -145,7 +150,6 @@ def main(args):
     
         ce_ptrained_path = "./ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
                             "model_best.pth.tar".format(args.rand_seed,
-                                                        #args.sched_cycles,
                                                         args.dataset,
                                                         ta_name[i])
         if i==k-1:
