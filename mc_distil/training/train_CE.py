@@ -32,15 +32,16 @@ from ..utils.initialization import prepare_logger, prepare_seed
 from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
 from ..data.get_dataset_with_transform import get_datasets
 
-def m__get_prefix( args ):
+
+def m__get_prefix(args):
     prefix = args.file_name + '_' + args.dataset + '-' + args.model_name
     return prefix
 
-def get_model_prefix( args ):
-    prefix = os.path.join(args.save_dir, m__get_prefix( args ) )
+def get_model_prefix(args):
+    prefix = os.path.join(args.save_dir, m__get_prefix(args) )
     return prefix
 
-def train_eval_loop( args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval' ):
+def train_eval_loop(args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval'):
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
@@ -84,7 +85,6 @@ def train_eval_loop( args, logger, epoch, optimizer, scheduler, network, xloader
     return losses.avg, top1.avg, top5.avg
 
 def main(args):
-
     assert torch.cuda.is_available(), "CUDA is not available."
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
@@ -158,7 +158,7 @@ def main(args):
         )
     )
     best_acc, best_epoch = 0.0, -1
-    log_file_name = get_model_prefix( args )  
+    log_file_name = get_model_prefix(args)  
         
     for epoch in range(args.epochs):
         mode='train'
@@ -234,13 +234,12 @@ def main(args):
     logger.log("Result is from best val model of epoch:{}".format(best_epoch))
     
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description="Train a classification model on typical image classification datasets.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-        # Data Generation
+    # Data Generation
     parser.add_argument("--dataset", type=str, default='cifar10', help="The dataset name.")
     parser.add_argument("--data_path", type=str, default='./data/', help="The dataset name.")
     parser.add_argument("--model_name", type=str, default='ResNet32TwoPFiveM-NAS', help="The path to the model configuration")

@@ -32,6 +32,7 @@ from ..utils.initialization import prepare_logger, prepare_seed
 from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
 from ..data.get_dataset_with_transform import get_datasets
 
+
 def m__get_prefix(args):
     prefix = args.file_name + '_' + args.dataset + '-' + args.model_name
     return prefix
@@ -225,7 +226,7 @@ def main(args):
     logger.log("-" * 50)
 
     best_acc, best_epoch = 0.0, 0
-    log_file_name = get_model_prefix( args )
+    log_file_name = get_model_prefix(args)
 
     
     for epoch in range(args.epochs):
@@ -326,7 +327,6 @@ def main(args):
     logger.log("Result is from best val model {} of epoch:{}".format(args.model_name,best_epoch))
         
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description="Train a classification model on typical image classification datasets.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

@@ -42,7 +42,7 @@ def get_model_prefix(args):
     return prefix
 
 # used just for evaluation
-def cifar_100_train_eval_loop( args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval' ):
+def cifar_100_train_eval_loop(args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval'):
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
@@ -215,7 +215,7 @@ def main(args):
     logger.log("-" * 50)
 
     best_acc, best_epoch = 0.0, 0
-    log_file_name = get_model_prefix( args )
+    log_file_name = get_model_prefix(args)
 
     for epoch in range(args.epochs):
         mode='train'
@@ -302,7 +302,6 @@ def main(args):
     logger.log("Result is from best val model  of epoch:{}".format(best_epoch))
         
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description="Train a classification model on typical image classification datasets.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

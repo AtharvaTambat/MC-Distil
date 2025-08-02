@@ -51,7 +51,7 @@ def get_model_prefix(args):
     prefix = os.path.join(args.save_dir, m__get_prefix(args))
     return prefix
 
-def cifar_100_train_eval_loop( args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval' ):
+def cifar_100_train_eval_loop(args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval'):
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
@@ -88,8 +88,6 @@ def cifar_100_train_eval_loop( args, logger, epoch, optimizer, scheduler, networ
     return losses.avg, top1.avg, top5.avg
 
 def main(args):
-    
-    
     assert torch.cuda.is_available(), "CUDA is not available."
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
@@ -279,7 +277,7 @@ def main(args):
     betas_collection = [[] for i in range(k)]
       
     Temp = args.temperature
-    log_file_name = get_model_prefix( args )
+    log_file_name = get_model_prefix(args)
     
     loss= [i for i in range(k)] 
     for epoch in range(args.epochs):
@@ -572,7 +570,6 @@ def main(args):
         
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description="Train a classification model on typical image classification datasets.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -601,7 +598,7 @@ if __name__ == "__main__":
     parser.add_argument('--sched_cycles', type=int, default=1,  help='How many times cosine cycles for scheduler')
     parser.add_argument('--file_name', type=str, default="",  help='file_name')
     
-    ################################## MC-Distil specific arguments #####
+    ################## MC-Distil specific arguments #####################
     parser.add_argument('--inst_based', type=bool, default=True)
     parser.add_argument('--meta_interval', type=int, default=20)
     parser.add_argument('--mcd_weight', type=float, default=0.5)
