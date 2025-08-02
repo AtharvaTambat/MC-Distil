@@ -51,7 +51,6 @@ class BasicBlock(nn.Module):
         out = self.bn2(self.conv2(out))
         preact = self.bn3(self.conv3(out))
         out = F.relu(preact)
-        # out = F.relu(self.bn3(self.conv3(out)))
         preact = torch.cat([x1, preact], 1)
         out = torch.cat([x1, out], 1)
         out = self.shuffle(out)
@@ -105,8 +104,6 @@ class ShuffleNetV2(nn.Module):
         out_channels = configs[net_size]['out_channels']
         num_blocks = configs[net_size]['num_blocks']
 
-        # self.conv1 = nn.Conv2d(3, 24, kernel_size=3,
-        #                        stride=1, padding=1, bias=False)
         self.conv1 = nn.Conv2d(3, 24, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(24)
         self.in_channels = 24
@@ -138,14 +135,13 @@ class ShuffleNetV2(nn.Module):
         return feat_m
 
     def get_message(self):
-        return 'ShuffleNet'#self.message
+        return 'ShuffleNet' # self.message
 
     def get_bn_before_relu(self):
         raise NotImplementedError('ShuffleNetV2 currently is not supported for "Overhaul" teacher')
 
     def forward(self, x, is_feat=False, preact=False):
         out = F.relu(self.bn1(self.conv1(x)))
-        # out = F.max_pool2d(out, 3, stride=2, padding=1)
         f0 = out
         out, f1_pre = self.layer1(out)
         f1 = out
@@ -163,14 +159,6 @@ class ShuffleNetV2(nn.Module):
 
         out = self.linear(out)
         logits = out
-
-        #if is_feat:
-        #    if preact:
-        #        return [f0, f1_pre, f2_pre, f3_pre, f4], out
-        #    else:
-        #        return [f0, f1, f2, f3, f4], out
-        #else:
-        #    return out
 
         return features, logits, ft
 

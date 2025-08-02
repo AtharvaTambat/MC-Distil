@@ -165,7 +165,7 @@ class ResNet(nn.Module):
         return feat_m
         
     def get_message(self):
-        return 'ResNet (32x4, 8x4 base)'#self.message
+        return 'ResNet (32x4, 8x4 base)' # self.message
 
     def forward(self, x, is_feat=False):
         
@@ -181,7 +181,6 @@ class ResNet(nn.Module):
         x = self.layer3(x)  # 8x8
         f3 = x
 
-        #print('f3 ' , f3.size())
         ft = [f3]
 
         x = self.avgpool(x)
@@ -193,10 +192,6 @@ class ResNet(nn.Module):
         logits = x
 
         return features, logits, ft
-        #if is_feat:
-        #    return [f0, f1, f2, f3, f4], x
-        #else:
-        #    return x
 
 def resnet8(**kwargs):
     return ResNet(8, [16, 16, 32, 64], 'basicblock', **kwargs)
@@ -292,9 +287,6 @@ if __name__ == '__main__':
     for f in feats:
         print(f.shape, f.min().item())
     print(logit.shape)
-    
-    #for i, m in enumerate(net.get_feat_modules()):
-    #    print(i, m)
     
     num_params_stu = (sum(p.numel() for p in net.parameters())/1000000.0)
     print('Total params_stu: {:.3f} M'.format(num_params_stu))

@@ -120,7 +120,7 @@ class MobileNetV2(nn.Module):
         print(T, width_mult)
 
     def get_message(self):
-        return 'MobileNetV2'#self.message
+        return 'MobileNetV2' # self.message
 
     def get_feat_modules(self):
         feat_m = nn.ModuleList([])
@@ -129,7 +129,6 @@ class MobileNetV2(nn.Module):
         return feat_m
 
     def forward(self, x, is_feat=False, preact=False):
-
         out = self.conv1(x)
         f0 = out
 
@@ -158,10 +157,6 @@ class MobileNetV2(nn.Module):
         logits = out
 
         return features, logits, ft
-        #if is_feat:
-        #    return [f0, f1, f2, f3, f4, f5], out
-        #else:
-        #    return out
 
     def _initialize_weights(self):
         for m in self.modules():

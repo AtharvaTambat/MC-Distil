@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-#import timm
+import timm
 from torch.distributions import Categorical
 import torch.nn.init as init
 import torchvision.models as rnn_models
@@ -10,7 +10,6 @@ import torchvision.models as rnn_models
 #class_num=100  #for cifar 100
 class_num=10    #for cifar 10
 #class_num=200   #for tiny imagenet200
-
 
 def _weights_init(m):
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
@@ -34,14 +33,12 @@ class SimKD(nn.Module):
             nn.BatchNorm2d(t_n//factor),
             nn.ReLU(inplace=True),
             conv3x3(t_n//factor, t_n//factor),
-            # depthwise convolution
-            #conv3x3(t_n//factor, t_n//factor, groups=t_n//factor),
             nn.BatchNorm2d(t_n//factor),
             nn.ReLU(inplace=True),
             conv1x1(t_n//factor, t_n),
             nn.BatchNorm2d(t_n),
             nn.ReLU(inplace=True),
-            ))
+           ))
         
     def forward(self, feat_s, feat_t, cls_t):
         
@@ -90,7 +87,7 @@ class BasicBlock(nn.Module):
                 nn.Conv2d(in_planes, self.expansion*planes,
                           kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(self.expansion*planes)
-            )
+           )
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -119,7 +116,7 @@ class Bottleneck(nn.Module):
                 nn.Conv2d(in_planes, self.expansion*planes,
                           kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(self.expansion*planes)
-            )
+           )
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -141,7 +138,7 @@ class NewResNet(nn.Module):
         self.layer2 = self._make_layer(block, all_planes[1], num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, all_planes[2], num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, all_planes[3], num_blocks[3], stride=2)
-        self.linear = nn.Linear( all_planes[3] *block.expansion, num_classes)
+        self.linear = nn.Linear(all_planes[3] *block.expansion, num_classes)
 
         self.adaptive_pool = adaptive_pool
         if self.adaptive_pool:
@@ -159,7 +156,7 @@ class NewResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def get_message(self):
-        return 'EfficientNetV2_s (CIFAR)'#self.message
+        return 'EfficientNetV2_s (CIFAR)' # self.message
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -181,7 +178,6 @@ class NewResNet(nn.Module):
 
         out = self.linear(out)
         logits = out
-        #return out
         return features, logits, ft
 
 def ResNet10_l(num_classes=class_num, adaptive_pool=False):
@@ -262,7 +258,7 @@ class IR_Block(nn.Module):
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, groups=planes, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
 
-        self.se = SqueezeExcite( planes )
+        self.se = SqueezeExcite(planes)
 
         self.conv3 = nn.Conv2d(planes, out_planes, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn3 = nn.BatchNorm2d(out_planes)
@@ -272,7 +268,7 @@ class IR_Block(nn.Module):
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(out_planes),
-            )
+           )
 
 
     def forward(self, x):
@@ -304,7 +300,7 @@ class Block(nn.Module):
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=1, padding=0, bias=False),
                 nn.BatchNorm2d(out_planes),
-            )
+           )
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -349,7 +345,7 @@ class EfficientNet(nn.Module):
         return nn.Sequential(*layers)
 
     def get_message(self):
-        return 'Custom EfficientNet (CIFAR)'#self.message
+        return 'Custom EfficientNet (CIFAR)' # self.message
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -367,7 +363,6 @@ class EfficientNet(nn.Module):
 
         logits = out 
         return features, logits, ft
-        #return out
 
 
 class EfficientNetV2(nn.Module):
@@ -376,19 +371,13 @@ class EfficientNetV2(nn.Module):
 
         self.conv_channels = [256]
         self.img_size = 224 #384 
-        self.model = timm.create_model('tf_efficientnetv2_s', pretrained=True, num_classes=num_classes )
-        #self.img_size = 224 
-        #self.model = timm.create_model('tf_efficientnet_b0_ns', pretrained=True, num_classes=num_classes )
-        #for param in self.model.parameters():
-        #    param.requires_grad = False
-        #for param in self.model.classifier.parameters():
-        #    param.requires_grad = True    
+        self.model = timm.create_model('tf_efficientnetv2_s', pretrained=True, num_classes=num_classes)
 
     def get_message(self):
-        return 'EfficientNetV2_s (CIFAR)'#self.message
+        return 'EfficientNetV2_s (CIFAR)' # self.message
 
     def forward(self, x):
-        x = F.interpolate( x, self.img_size )
+        x = F.interpolate(x, self.img_size)
         x = self.model.forward_features(x)
         ft = [ x ]
 
@@ -434,7 +423,7 @@ class L_EfficientNet(nn.Module):
         return nn.Sequential(*layers)
 
     def get_message(self):
-        return 'Custom EfficientNet (CIFAR)'#self.message
+        return 'Custom EfficientNet (CIFAR)' # self.message
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -501,7 +490,7 @@ class MobileNetV2(nn.Module):
 
 class B26_Inst_RoutingNetworkD(nn.Module):
     def __init__(self, num_s_ft, num_t_ft, num_s_conv_ft=10, num_t_conv_ft=10, n_labels=10):
-        print('---------------------------------- B26 (student_ft + teacher_ft) --')
+        print('---------------------------------- B26 (student_ft + teacher_ft) ----------------------------------')
         print(' t_conv_ft, t_ft ', num_t_conv_ft, num_t_ft)
         print(' s_conv_ft, s_ft ', num_s_conv_ft, num_s_ft)
         super(B26_Inst_RoutingNetworkD, self).__init__()
@@ -528,7 +517,7 @@ class B26_Inst_RoutingNetworkD(nn.Module):
             nn.Flatten(),
 
             nn.Linear(n_convs, num_s_ft, bias=True),
-        )
+       )
 
         self.t_ft_convs = nn.Sequential(
             nn.Conv2d(num_t_conv_ft, n_convs, 1, 1, 0, bias=False),
@@ -547,15 +536,15 @@ class B26_Inst_RoutingNetworkD(nn.Module):
             nn.Flatten(),
 
             nn.Linear(n_convs, num_t_ft, bias=True),
-        )
+       )
 
         self.routing = nn.Sequential(
                 nn.Linear(num_t_ft + num_s_ft, n_labels, bias=True),
-                nn.BatchNorm1d( n_labels ),
+                nn.BatchNorm1d(n_labels),
                 nn.ReLU(),
                 nn.Linear(n_labels, 1), # bias=True),
                 nn.Sigmoid(),
-            )
+           )
 
         for m in [self.routing]:
             m.apply(init_weights)
@@ -563,16 +552,16 @@ class B26_Inst_RoutingNetworkD(nn.Module):
     def forward(self, s_ft, s_logits, t_ft, t_logits, y_one_hot, s_all_ft=None, t_all_ft=None):
         _logits = t_logits
 
-        t_ft = self.t_ft_convs( t_all_ft[-1] )
-        s_ft = self.s_ft_convs( s_all_ft[-1].detach() )
-        clf_ft = torch.cat( [t_ft, s_ft], dim=1 )
-        gate = self.routing( clf_ft )
+        t_ft = self.t_ft_convs(t_all_ft[-1])
+        s_ft = self.s_ft_convs(s_all_ft[-1].detach())
+        clf_ft = torch.cat([t_ft, s_ft], dim=1)
+        gate = self.routing(clf_ft)
         return gate, _logits 
 
 
 class B25_Inst_RoutingNetworkD(nn.Module):
     def __init__(self, num_s_ft, num_t_ft, num_s_conv_ft=10, num_t_conv_ft=10, n_labels=10):
-        print('---------------------------------- B25 (student_ft) --')
+        print('---------------------------------- B25 (student_ft) ----------------------------------')
         print(' t_conv_ft, t_ft ', num_t_conv_ft, num_t_ft)
         print(' s_conv_ft, s_ft ', num_s_conv_ft, num_s_ft)
         super(B25_Inst_RoutingNetworkD, self).__init__()
@@ -599,15 +588,15 @@ class B25_Inst_RoutingNetworkD(nn.Module):
             nn.Flatten(),
 
             nn.Linear(n_convs, num_s_ft, bias=True),
-        )
+       )
 
         self.routing = nn.Sequential(
                 nn.Linear(num_s_ft, n_labels, bias=True),
-                nn.BatchNorm1d( n_labels ),
+                nn.BatchNorm1d(n_labels),
                 nn.ReLU(),
                 nn.Linear(n_labels, 1), # bias=True),
                 nn.Sigmoid(),
-            )
+           )
 
         for m in [self.routing]:
             m.apply(init_weights)
@@ -615,15 +604,15 @@ class B25_Inst_RoutingNetworkD(nn.Module):
     def forward(self, s_ft, s_logits, t_ft, t_logits, y_one_hot, s_all_ft=None, t_all_ft=None):
         _logits = t_logits
 
-        clf_ft = self.ft_convs( s_all_ft[-1].detach() )
-        gate = self.routing( clf_ft )
+        clf_ft = self.ft_convs(s_all_ft[-1].detach())
+        gate = self.routing(clf_ft)
         return gate, _logits 
 
 
 
 class B24_Inst_RoutingNetworkD(nn.Module):
     def __init__(self, num_s_ft, num_t_ft, num_s_conv_ft=10, num_t_conv_ft=10, n_labels=10):
-        print('---------------------------------- B24 (teacher_logits) --')
+        print('---------------------------------- B24 (teacher_logits) --------------------------------------')
         print(' t_conv_ft, t_ft ', num_t_conv_ft, num_t_ft)
         print(' s_conv_ft, s_ft ', num_s_conv_ft, num_s_ft)
         super(B24_Inst_RoutingNetworkD, self).__init__()
@@ -650,15 +639,15 @@ class B24_Inst_RoutingNetworkD(nn.Module):
             nn.Flatten(),
 
             nn.Linear(n_convs, num_t_ft, bias=True),
-        )
+       )
 
         self.routing = nn.Sequential(
                 nn.Linear(num_t_ft, n_labels, bias=True),
-                nn.BatchNorm1d( n_labels ),
+                nn.BatchNorm1d(n_labels),
                 nn.ReLU(),
                 nn.Linear(n_labels, 1), # bias=True),
                 nn.Sigmoid(),
-            )
+           )
 
         for m in [self.routing]:
             m.apply(init_weights)
@@ -666,14 +655,14 @@ class B24_Inst_RoutingNetworkD(nn.Module):
     def forward(self, s_ft, s_logits, t_ft, t_logits, y_one_hot, s_all_ft=None, t_all_ft=None):
         _logits = t_logits
 
-        clf_ft = self.ft_convs( t_all_ft[-1] )
-        gate = self.routing( clf_ft )
+        clf_ft = self.ft_convs(t_all_ft[-1])
+        gate = self.routing(clf_ft)
         return gate, _logits 
 
 
 class B23_Inst_RoutingNetworkD(nn.Module):
     def __init__(self, num_s_ft, num_t_ft, num_s_conv_ft=10, num_t_conv_ft=10, n_labels=10):
-        print('---------------------------------- B23 (teacher_logits) --')
+        print('---------------------------------- B23 (teacher_logits) ----------------------------------')
         print(' t_conv_ft, t_ft ', num_t_conv_ft, num_t_ft)
         print(' s_conv_ft, s_ft ', num_s_conv_ft, num_s_ft)
         super(B23_Inst_RoutingNetworkD, self).__init__()
@@ -684,14 +673,14 @@ class B23_Inst_RoutingNetworkD(nn.Module):
 
         self.routing = nn.Sequential(
                 nn.Linear(num_t_ft , n_ft, bias=True),
-                nn.BatchNorm1d( n_ft ),
+                nn.BatchNorm1d(n_ft),
                 nn.ReLU(),
                 nn.Linear(n_ft, 2*n_ft, bias=True),
-                nn.BatchNorm1d( 2*n_ft ),
+                nn.BatchNorm1d(2*n_ft),
                 nn.ReLU(),
                 nn.Linear(2*n_ft, 1), # bias=True),
                 nn.Sigmoid(),
-            )
+           )
 
         for m in [self.routing]:
             m.apply(init_weights)
@@ -700,19 +689,19 @@ class B23_Inst_RoutingNetworkD(nn.Module):
         _logits = t_logits
 
         clf_ft = t_ft 
-        gate = self.routing( clf_ft )
+        gate = self.routing(clf_ft)
         return gate, _logits 
 
 
-def get_instant_weight_model( num_s_ft, num_t_ft, num_s_conv_ft=10, num_t_conv_ft=10, routing_name = 'default', n_labels=10):
+def get_instant_weight_model(num_s_ft, num_t_ft, num_s_conv_ft=10, num_t_conv_ft=10, routing_name = 'default', n_labels=10):
     if routing_name=='b23_default':
-        routingNet = B23_Inst_RoutingNetworkD( num_s_ft=num_s_ft, num_t_ft=num_t_ft, num_s_conv_ft=num_s_conv_ft, num_t_conv_ft=num_t_conv_ft, n_labels=n_labels)
+        routingNet = B23_Inst_RoutingNetworkD(num_s_ft=num_s_ft, num_t_ft=num_t_ft, num_s_conv_ft=num_s_conv_ft, num_t_conv_ft=num_t_conv_ft, n_labels=n_labels)
     elif routing_name=='b24_default':
-        routingNet = B24_Inst_RoutingNetworkD( num_s_ft=num_s_ft, num_t_ft=num_t_ft, num_s_conv_ft=num_s_conv_ft, num_t_conv_ft=num_t_conv_ft, n_labels=n_labels)
+        routingNet = B24_Inst_RoutingNetworkD(num_s_ft=num_s_ft, num_t_ft=num_t_ft, num_s_conv_ft=num_s_conv_ft, num_t_conv_ft=num_t_conv_ft, n_labels=n_labels)
     elif routing_name=='b25_default':
-        routingNet = B25_Inst_RoutingNetworkD( num_s_ft=num_s_ft, num_t_ft=num_t_ft, num_s_conv_ft=num_s_conv_ft, num_t_conv_ft=num_t_conv_ft, n_labels=n_labels)
+        routingNet = B25_Inst_RoutingNetworkD(num_s_ft=num_s_ft, num_t_ft=num_t_ft, num_s_conv_ft=num_s_conv_ft, num_t_conv_ft=num_t_conv_ft, n_labels=n_labels)
     elif routing_name=='b26_default':
-        routingNet = B26_Inst_RoutingNetworkD( num_s_ft=num_s_ft, num_t_ft=num_t_ft, num_s_conv_ft=num_s_conv_ft, num_t_conv_ft=num_t_conv_ft, n_labels=n_labels)
+        routingNet = B26_Inst_RoutingNetworkD(num_s_ft=num_s_ft, num_t_ft=num_t_ft, num_s_conv_ft=num_s_conv_ft, num_t_conv_ft=num_t_conv_ft, n_labels=n_labels)
     else:   
         assert(1==2) 
     routingNet = routingNet.cuda()
@@ -722,45 +711,45 @@ def get_instant_weight_model( num_s_ft, num_t_ft, num_s_conv_ft=10, num_t_conv_f
 def get_cifar_models(config, model_name="", extra_path=None):
   #print(model_name)
   if model_name == 'efficientnet':
-      return EfficientNet( config.class_num )  
+      return EfficientNet(config.class_num)  
 
   if model_name == 'l_efficientnet':
-      return L_EfficientNet( config.class_num )  
+      return L_EfficientNet(config.class_num)  
 
   if model_name == 'efficientnetv2_s':
-      return EfficientNetV2( config.class_num )  
+      return EfficientNetV2(config.class_num)  
 
   adaptive_pool = config.dataset == 'tiny-imagenet-200'
 
   if model_name == 'ResNet50':
-      return ResNet50( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet50(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet34':
-      return ResNet34( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet34(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet18':
-      return ResNet18( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet18(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet10':
-      return ResNet10( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet10(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet10_l':
-      return ResNet10_l( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet10_l(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet10_m':
-      return ResNet10_m( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet10_m(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet10_s':
-      return ResNet10_s( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet10_s(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet10_xs':
-      return ResNet10_xs( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet10_xs(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet10_xxs':
-      return ResNet10_xxs( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet10_xxs(config.class_num, adaptive_pool=adaptive_pool)  
 
   if model_name == 'ResNet10_xxxs':
-      return ResNet10_xxxs( config.class_num, adaptive_pool=adaptive_pool )  
+      return ResNet10_xxxs(config.class_num, adaptive_pool=adaptive_pool)  
 
   raise ValueError('invalid model-name : {:}'.format(model_name))
 
@@ -785,6 +774,7 @@ class TensorLayer(nn.Module):
     def forward(self, tensors):
         outputs = [tensor(x) for tensor, x in zip(self.tensors, tensors)]
         return torch.cat(outputs, dim=1)
+    
 ## New metanet 
 class ResNetBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -799,7 +789,7 @@ class ResNetBlock(nn.Module):
             self.shortcut = nn.Sequential(
                 nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm1d(out_channels)
-            )
+           )
 
     def forward(self, x):
         out = self.conv1(x)
@@ -843,54 +833,7 @@ class ResNet32(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
-class ResNet32_new(nn.Module):
-    def __init__(self):
-        super(ResNet32_new, self).__init__()
-        super(ResNet32MetaNet, self).__init__()
-        self.in_planes = 16
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
-        #self.linear = nn.Linear(64, 2)
-        
-        self.linear = nn.Linear(64, 2*k)
-        self.apply(_weights_init)
-        """
-        # Define the layers for the ResNet32 architecture
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
-        self.relu = nn.ReLU(inplace=True)
-        self.residual_layers = self.make_residual_layers(32, 32, num_blocks=5)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(32, 10)
-        """
-    def make_residual_layers(self, in_channels, out_channels, num_blocks):
-        strides = [stride] + [1]*(num_blocks-1)
-        layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
-            self.in_planes = planes * block.expansion
-        return nn.Sequential(*layers)
-        """
-        layers = []
-        for _ in range(num_blocks):
-            #layers.append(ResidualBlock_new(in_channels, out_channels))
-            layers.append(BasicBlock(in_channels, out_channels))
-            in_channels = out_channels
-        return nn.Sequential(*layers)
-        """
-    def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = F.avg_pool2d(out, out.size()[3])
-        out = out.view(out.size(0), -1)
-        out = self.linear(out)
-        out = torch.sigmoid(out)
 
-        return out
 
 class ResidualBlock_new(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -912,9 +855,6 @@ class ResidualBlock_new(nn.Module):
 
         return out
 
-#neew metanet ends
-
-
 class ResNet32MetaNet(nn.Module):
     
     def __init__(self, block=BasicBlock, num_blocks=[5, 5, 5], use_sigmoid=False):
@@ -927,8 +867,6 @@ class ResNet32MetaNet(nn.Module):
         self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
         self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
-        
-        #self.linear = nn.Linear(64, 2)
         
         self.linear = nn.Linear(64, 3*k)
         self.apply(_weights_init)
@@ -947,7 +885,6 @@ class ResNet32MetaNet(nn.Module):
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
-        #print("=================",out.size()[3])
         out = F.avg_pool2d(out, out.size()[3])
         out = out.view(out.size(0), -1)
         out = self.linear(out)
@@ -969,16 +906,14 @@ class InstanceMetaNet(nn.Module):
                 self.layers.append(nn.MaxPool2d(kernel_size=2,stride=2))
                 input_size = input_size//2
 
-        
         self.layers = nn.Sequential(*self.layers)
 
-        #output layer for predicting weight
+        # output layer for predicting weight
         self.final_layer = nn.Linear(input_size*input_size*out_features,2)
     
     def forward(self, input):
         out = self.layers(input)
         out = out.view(out.size(0),-1)
-        # print(out.shape)
         return torch.sigmoid(self.final_layer(out))
 
 class InstanceMetaNetLite(nn.Module):
@@ -998,7 +933,6 @@ class InstanceMetaNetLite(nn.Module):
     def forward(self, input):
         out = self.layers(input)
         out = out.view(out.size(0),-1)
-        # print(out.shape)
         return torch.sigmoid(self.final_layer(out))
 
 class Modified_MetaLearner(nn.Module):
@@ -1015,16 +949,14 @@ class Modified_MetaLearner(nn.Module):
                 self.layers.append(nn.MaxPool1d(kernel_size=2,stride=2))
                 input_size = input_size//2
 
-        
         self.layers = nn.Sequential(*self.layers)
 
-        #output layer for predicting weight
+        # output layer for predicting weight
         self.final_layer = nn.Linear(input_size*out_features,2)
     
     def forward(self, input):
         out = self.layers(input)
         out = out.view(out.size(0),-1)
-        # print(out.shape)
         return torch.sigmoid(self.final_layer(out))
     
     
