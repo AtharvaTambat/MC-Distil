@@ -213,8 +213,8 @@ def ShuffleV2_2_0(**kwargs):
     model = ShuffleNetV2(net_size=2.0, **kwargs)
     return model
 
-def get_shufflenetv2_models( config, name ):
-    if name == 'ShuffleNetV2': return ShuffleV2( num_classes = config.class_num )
+def get_shufflenetv2_models(config, name):
+    if name == 'ShuffleNetV2': return ShuffleV2(num_classes = config.class_num)
 
 if __name__ == '__main__':
     net = ShuffleV2(num_classes=100)

@@ -27,14 +27,14 @@ from torch.distributions import Categorical
 from torch.utils.data import Dataset, random_split
 import torch.utils.data as data
 
-from ..models.model_dict import get_model_from_name
-from ..utils.core import get_model_infos, time_string, convert_secs2time
-from ..utils.logging import AverageMeter, ProgressMeter
-from ..utils.initialization import prepare_logger, prepare_seed
-from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
-from ..data.get_dataset_with_transform import get_datasets
-from .meta import *
-from ..models.base import *
+from ...models.model_dict import get_model_from_name
+from ...utils.core import get_model_infos, time_string, convert_secs2time
+from ...utils.logging import AverageMeter, ProgressMeter
+from ...utils.initialization import prepare_logger, prepare_seed
+from ...utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
+from ...data.get_dataset_with_transform import get_datasets
+from ..meta import *
+from ...models.base import *
 
 
 def m__get_prefix(args):
@@ -143,12 +143,12 @@ def main(args):
     model_config = Arguments(**md_dict)
 
     # STUDENT
-    base_model = get_model_from_name( model_config, args.model_name )
+    base_model = get_model_from_name(model_config, args.model_name)
     logger.log("Student :" + args.model_name)
 
     base_model = base_model.cuda()
     network = base_model
-    best_state_dict = copy.deepcopy( base_model.state_dict() )
+    best_state_dict = copy.deepcopy(base_model.state_dict())
     ce_ptrained_path = "./ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
                         "model_best.pth.tar".format(args.rand_seed,
                                                     args.dataset,
@@ -161,7 +161,7 @@ def main(args):
         base_model.load_state_dict(base_checkpoint["base_state_dict"])
 
     # testing pretrained student
-    test_loss, test_acc1, test_acc5 = evaluate_model( network, test_loader, criterion, args.eval_batch_size )
+    test_loss, test_acc1, test_acc5 = evaluate_model(network, test_loader, criterion, args.eval_batch_size)
     logger.log(
         "***{:s}*** before training [Student(CE)] Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
             time_string(),
@@ -179,7 +179,7 @@ def main(args):
                                                                                       args.epochs//args.sched_cycles))
 
     # TEACHER
-    Teacher_model = get_model_from_name( model_config, args.teacher )
+    Teacher_model = get_model_from_name(model_config, args.teacher)
     teach_PATH = "./ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
                     "model_best.pth.tar".format(args.rand_seed,
                                                 args.dataset,
@@ -193,7 +193,7 @@ def main(args):
     logger.log("Teacher loaded....")
     
     # testing teacher
-    test_loss, test_acc1, test_acc5 = evaluate_model( network_t, test_loader, nn.CrossEntropyLoss(), args.eval_batch_size )
+    test_loss, test_acc1, test_acc5 = evaluate_model(network_t, test_loader, nn.CrossEntropyLoss(), args.eval_batch_size)
     logger.log(
         "***{:s}*** [Teacher] Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
             time_string(),
@@ -223,7 +223,7 @@ def main(args):
         Arguments_meta = namedtuple("Configure", ('class_num','dataset')  )
         md_dict_meta = { 'class_num' : 2, 'dataset' : args.dataset }
         model_config_meta = Arguments_meta(**md_dict_meta)
-        meta_net= get_model_from_name( model_config_meta, "ResNet10_s" )
+        meta_net= get_model_from_name(model_config_meta, "ResNet10_s")
         meta_net= meta_net.cuda()
     
     meta_optimizer = torch.optim.Adam(meta_net.parameters(), lr=args.meta_lr, weight_decay=args.meta_weight_decay)
@@ -257,7 +257,7 @@ def main(args):
             # train metanet
             if (iteration + 1) % args.meta_interval == 0:
                 # make a descent in a COPY OF THE STUDENT (in train data), metanet net will do a move on this move for metaloss
-                pseudo_net = get_model_from_name( model_config, args.model_name )
+                pseudo_net = get_model_from_name(model_config, args.model_name)
                 pseudo_net = pseudo_net.cuda()
                 pseudo_net.load_state_dict(network.state_dict()) # base_model == network
                 pseudo_net.train()
@@ -283,7 +283,7 @@ def main(args):
                 
                 
                 # Loss Update
-                loss_CE = torch.mean( alpha * pseudo_loss_vector_CE )
+                loss_CE = torch.mean(alpha * pseudo_loss_vector_CE)
                 loss_KD = (Temp**2)* torch.mean( beta * torch.sum(pseudo_loss_vector_KD,dim=1))
                 
                 pseudo_loss = loss_CE + loss_KD
@@ -365,12 +365,12 @@ def main(args):
             log_betas_collection.append(betas)
 
         scheduler_s.step(epoch)
-        val_loss, val_acc1, val_acc5 = cifar_100_train_eval_loop( args, logger, epoch, optimizer_s, scheduler_s, network, valid_loader, criterion, args.eval_batch_size, mode='eval' )
+        val_loss, val_acc1, val_acc5 = cifar_100_train_eval_loop(args, logger, epoch, optimizer_s, scheduler_s, network, valid_loader, criterion, args.eval_batch_size, mode='eval')
         is_best = False 
         if val_acc1 > best_acc:
             best_acc = val_acc1
             is_best = True
-            best_state_dict = copy.deepcopy( network.state_dict() )
+            best_state_dict = copy.deepcopy(network.state_dict())
             best_epoch = epoch+1
         save_checkpoint({
                 'epoch': epoch + 1,
@@ -386,8 +386,8 @@ def main(args):
                                                                                                                         get_mlr(scheduler_s), 
                                                                                                                         best_acc))
 
-    network.load_state_dict( best_state_dict )
-    test_loss, test_acc1, test_acc5 = evaluate_model( network, test_loader, criterion, args.eval_batch_size )
+    network.load_state_dict(best_state_dict)
+    test_loss, test_acc1, test_acc5 = evaluate_model(network, test_loader, criterion, args.eval_batch_size)
     logger.log(
         "\n***{:s}*** [Post-train] [Student] Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
             time_string(),

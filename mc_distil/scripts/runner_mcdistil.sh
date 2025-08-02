@@ -51,7 +51,7 @@ echo "S=$base_name"
 # 	--lr $lr --wd $wd --momentum $momentum --epochs $epochs --meta_lr 0.01 \
 # 	--pretrained_student True --temperature 2 --sched_cycles 1 \
 # 	--rand_seed $1
-CUDA_VISIBLE_DEVICES="2"  python3 -m mc_distil.training.train_mcdistil --dataset $dataset --data_path $data_path \
+CUDA_VISIBLE_DEVICES="2"  python3 -m mc_distil.training.image_classification.train_mcdistil --dataset $dataset --data_path $data_path \
     --teacher $teacher_name --model_name $base_name --save_dir $save_dir \
 	--eval_batch_size $eval_batch_size --batch_size $batch_size  \
 	--lr $lr --wd $wd --momentum $momentum --epochs  200\

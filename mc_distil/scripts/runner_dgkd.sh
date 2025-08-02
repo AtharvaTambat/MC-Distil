@@ -44,7 +44,7 @@ teacher_name='ResNet34'
 
 
 echo "Teacher=$teacher_name"
-CUDA_VISIBLE_DEVICES=$GPU python3 -m mc_distil.training.train_dgkd --dataset $dataset --data_path $data_path \
+CUDA_VISIBLE_DEVICES=$GPU python3 -m mc_distil.training.image_classification.train_dgkd --dataset $dataset --data_path $data_path \
     --teacher $teacher_name --model_name $base_name --save_dir $save_dir \
 	--eval_batch_size $eval_batch_size --batch_size $batch_size  \
 	--lr $lr --momentum $momentum \

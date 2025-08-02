@@ -19,16 +19,16 @@ def get_model_from_name(config, name):
             'efficientnet','l_efficientnet','efficientnetv2_s'])
 
     if name in original_resnet:
-        return get_cifar_models( config, name )
+        return get_cifar_models(config, name)
 
     if name in new_resnet:
-        return get_resnet_models( config, name, class_num=config.class_num )
+        return get_resnet_models(config, name, class_num=config.class_num)
  
     if name in mobilenet:
-        return get_mobilenetv2_models( config, name )
+        return get_mobilenetv2_models(config, name)
 
     if name in shufflenet:
-        return get_shufflenetv2_models( config, name )
+        return get_shufflenetv2_models(config, name)
 
 
 def test():

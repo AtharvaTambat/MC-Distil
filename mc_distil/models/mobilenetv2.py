@@ -186,9 +186,9 @@ def mobile_half(num_classes):
 def mobile_half_double(num_classes):
     return mobilenetv2_T_w(6, 1.0, num_classes)
 
-def get_mobilenetv2_models( config, name ):
-    if name == 'MobileNetV2': return mobile_half( config.class_num )
-    if name == 'MobileNetV2x2': return mobile_half_double( config.class_num )
+def get_mobilenetv2_models(config, name):
+    if name == 'MobileNetV2': return mobile_half(config.class_num)
+    if name == 'MobileNetV2x2': return mobile_half_double(config.class_num)
 
 if __name__ == '__main__':
     x = torch.randn(2, 3, 32, 32)

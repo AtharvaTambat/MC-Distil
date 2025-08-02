@@ -25,12 +25,12 @@ from torch import nn, Tensor
 from torch.distributions import Categorical
 import torch.utils.data as data
 
-from ..models.model_dict import get_model_from_name
-from ..utils.core import get_model_infos
-from ..utils.logging import AverageMeter, ProgressMeter, time_string, convert_secs2time
-from ..utils.initialization import prepare_logger, prepare_seed
-from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
-from ..data.get_dataset_with_transform import get_datasets
+from ...models.model_dict import get_model_from_name
+from ...utils.core import get_model_infos
+from ...utils.logging import AverageMeter, ProgressMeter, time_string, convert_secs2time
+from ...utils.initialization import prepare_logger, prepare_seed
+from ...utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
+from ...data.get_dataset_with_transform import get_datasets
 
 
 def m__get_prefix(args):
@@ -292,12 +292,12 @@ def main(args):
 
         
         scheduler_s.step(epoch)
-        val_loss, val_acc1, val_acc5 = cifar_100_train_eval_loop( args, logger, epoch, optimizer_s, scheduler_s, network[k-1], valid_loader, criterion, args.eval_batch_size, mode='eval' )
+        val_loss, val_acc1, val_acc5 = cifar_100_train_eval_loop(args, logger, epoch, optimizer_s, scheduler_s, network[k-1], valid_loader, criterion, args.eval_batch_size, mode='eval')
         is_best = False 
         if val_acc1 > best_acc:
             best_acc = val_acc1
             is_best = True
-            best_state_dict = copy.deepcopy( network[k-1].state_dict() )
+            best_state_dict = copy.deepcopy(network[k-1].state_dict())
             best_epoch = epoch+1
         save_checkpoint({
                 'epoch': epoch + 1,
@@ -313,7 +313,7 @@ def main(args):
                                                                                                                         best_acc))
 
     network[k-1].load_state_dict(best_state_dict)
-    test_loss, test_acc1, test_acc5 = evaluate_model( network[k-1], test_loader, criterion, args.eval_batch_size )
+    test_loss, test_acc1, test_acc5 = evaluate_model(network[k-1], test_loader, criterion, args.eval_batch_size)
     logger.log(
         "\n***{:s}*** [Post-train] [Student {}] Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
             time_string(),i,

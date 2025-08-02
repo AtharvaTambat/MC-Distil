@@ -30,17 +30,17 @@ from torch.utils.data import Dataset, random_split
 import torch.utils.data as data
 import torchvision.models as models
 
-from ..models.new_models import FullyConnectedNetwork
-from ..models.model_dict import get_model_from_name
-from ..utils.core import (
+from ...models.new_models import FullyConnectedNetwork
+from ...models.model_dict import get_model_from_name
+from ...utils.core import (
     get_model_infos, time_string, convert_secs2time
 )
-from ..utils.logging import AverageMeter, ProgressMeter
-from ..utils.initialization import prepare_logger, prepare_seed
-from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
-from ..data.get_dataset_with_transform import get_datasets
-from .meta import *
-from ..models.base import *
+from ...utils.logging import AverageMeter, ProgressMeter
+from ...utils.initialization import prepare_logger, prepare_seed
+from ...utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
+from ...data.get_dataset_with_transform import get_datasets
+from ..meta import *
+from ...models.base import *
 
 
 def m__get_prefix(args):
@@ -162,7 +162,7 @@ def main(args):
     best_state_dict= [i for i in range(k)]
     
     for i in range(k):
-        base_model[i] = get_model_from_name( model_config, model_name[i] )
+        base_model[i] = get_model_from_name(model_config, model_name[i])
         logger.log("Student {} + {}:".format(i, model_name[i]) )
     
         ce_ptrained_path = "./ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
@@ -220,7 +220,7 @@ def main(args):
     logger.log("Teacher loaded....")
     
     # testing teacher
-    test_loss, test_acc1, test_acc5 = evaluate_model( network_t, test_loader, nn.CrossEntropyLoss(), args.eval_batch_size )
+    test_loss, test_acc1, test_acc5 = evaluate_model(network_t, test_loader, nn.CrossEntropyLoss(), args.eval_batch_size)
     logger.log(
         "***{:s}*** [Teacher] Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
             time_string(),
@@ -251,7 +251,7 @@ def main(args):
             Arguments_meta = namedtuple("Configure", ('class_num','dataset')  )
             md_dict_meta = { 'class_num' : 2*k, 'dataset' : args.dataset }
             model_config_meta = Arguments_meta(**md_dict_meta)
-            meta_net= get_model_from_name( model_config_meta, "ResNet10_s" )
+            meta_net= get_model_from_name(model_config_meta, "ResNet10_s")
             meta_net= meta_net.cuda()
         if Mode==2:
             # Encoded img to ResNet
@@ -308,7 +308,7 @@ def main(args):
                  
                 # make a descent in a COPY OF THE STUDENT (in train data), metanet net will do a move on this move for metaloss
                 for i in range(k):
-                    pseudo_net[i] = get_model_from_name( model_config, model_name[i] )
+                    pseudo_net[i] = get_model_from_name(model_config, model_name[i])
                     pseudo_net[i] = pseudo_net[i].cuda()
                     pseudo_net[i].load_state_dict(network[i].state_dict()) # base_model == network
                     pseudo_net[i].train()
@@ -381,7 +381,7 @@ def main(args):
                 
                 pseudo_loss= [i for i in range(k)]
                 for i in range(k):
-                    loss_CE[i] = torch.mean( alpha[i]*pseudo_loss_vector_CE[i] )
+                    loss_CE[i] = torch.mean(alpha[i]*pseudo_loss_vector_CE[i])
                     loss_KD[i] = (Temp**2)* torch.mean( beta[i] * torch.sum(pseudo_loss_vector_KD[i],dim=1))
                     pseudo_loss[i] = loss_CE[i] + loss_KD[i] 
                 pseudo_grads=[i for i in range(k)]
@@ -492,7 +492,7 @@ def main(args):
                 loss_vector = criterion_indiv(logits[i], targets)
                 loss_vector_KD= nn.KLDivLoss(reduction='none')(F.log_softmax(logits[i] / Temp, dim=1),\
                                                                F.softmax(teacher_outputs / Temp, dim=1))
-                loss_CE= torch.mean( alpha[i]*loss_vector )
+                loss_CE= torch.mean(alpha[i]*loss_vector)
                 loss_KD = (Temp**2)* torch.mean( beta[i] * torch.sum(loss_vector_KD,dim=1))
                 
                 loss= loss_CE+loss_KD
@@ -518,12 +518,12 @@ def main(args):
 
         best_acc= [0 for i in range(k)]
         for i in range(k):
-            val_loss, val_acc1, val_acc5 = cifar_100_train_eval_loop( args, logger, epoch, optimizer_s[i], scheduler_s[i], network[i], valid_loader, criterion, args.eval_batch_size, mode='eval' )
+            val_loss, val_acc1, val_acc5 = cifar_100_train_eval_loop(args, logger, epoch, optimizer_s[i], scheduler_s[i], network[i], valid_loader, criterion, args.eval_batch_size, mode='eval')
             is_best = False 
             if val_acc1 > best_acc[i]:
                 best_acc[i] = val_acc1
                 is_best = True
-                best_state_dict[i] = copy.deepcopy( network[i].state_dict() )
+                best_state_dict[i] = copy.deepcopy(network[i].state_dict())
                 best_epoch = epoch+1
             save_checkpoint({
                     'epoch': epoch + 1,
