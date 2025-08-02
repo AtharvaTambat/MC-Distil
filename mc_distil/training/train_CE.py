@@ -12,6 +12,7 @@ from torch.distributions import Categorical
 import datetime, pytz
 from typing import Type, Any, Callable, Union, List, Optional
 from PIL import ImageFile
+import torch.utils.data as data
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import copy
@@ -23,8 +24,7 @@ from ..models.model_dict import get_model_from_name
 from ..utils.core import get_model_infos
 from ..utils.logging import AverageMeter, ProgressMeter, time_string, convert_secs2time
 from ..utils.initialization import prepare_logger, prepare_seed
-from ..data.datasets import get_datasets
-import torch.utils.data as data
+from ..data.get_dataset_with_transform import get_datasets
 from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
 
 def m__get_prefix( args ):
@@ -83,7 +83,7 @@ def main(args):
     assert torch.cuda.is_available(), "CUDA is not available."
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
-    # torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.deterministic = True
     torch.set_num_threads(args.workers)
     logger = prepare_logger(args)
     prepare_seed(args.rand_seed)
@@ -92,21 +92,12 @@ def main(args):
     
     dataset=args.dataset
     if dataset=="cifar100" or dataset=="cifar10":
-        
-        train_data, test_data, xshape, class_num = get_datasets(
-        args.dataset, args.data_path, args.cutout_length
-        )
-        train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//10, 
-                                                            len(train_data)//10])
-    
-    
+        train_data, test_data, xshape, class_num = get_datasets(args.dataset, args.data_path, args.cutout_length)
+        train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//10, len(train_data)//10])
     else:
-        train_data, test_data, xshape, class_num = get_datasets(
-        args.dataset, args.data_path, args.cutout_length
-        )
+        train_data, test_data, xshape, class_num = get_datasets(args.dataset, args.data_path, args.cutout_length)
         train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//5,  len(train_data)//5])
         test_data, valid_data = data.random_split(valid_data, [len(valid_data)-len(valid_data)//2,  len(valid_data)//2])
-    
     
     train_loader = torch.utils.data.DataLoader(
         train_data,
@@ -148,9 +139,7 @@ def main(args):
     network = base_model
     best_state_dict = copy.deepcopy( base_model.state_dict() )
     
-    epoch_ = 0 #base_model_dict['epoch']
     optimizer = torch.optim.SGD(base_model.parameters(), args.lr, momentum=args.momentum, weight_decay=args.wd)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs//args.sched_cycles)
     logger.log("Scheduling LR update to student {} time at {}-epoch intervals".format(args.sched_cycles, 
                                                                                       args.epochs//args.sched_cycles))
@@ -202,9 +191,7 @@ def main(args):
         
         scheduler.step()
 
-        val_loss, val_acc1, val_acc5 = train_eval_loop( args, logger, epoch, optimizer, scheduler, network, valid_loader, criterion, args.eval_batch_size, mode='eval' )
-        #val_loss1, val_acc11, val_acc51 = train_eval_loop( args, logger, epoch, optimizer, scheduler, network, test_loader, criterion, args.eval_batch_size, mode='eval' )
-        #print(val_loss1, val_acc11, val_acc51)
+        val_loss, val_acc1, val_acc5 = train_eval_loop(args, logger, epoch, optimizer, scheduler, network, valid_loader, criterion, args.eval_batch_size, mode='eval')
         is_best = False 
         if val_acc1 > best_acc:
             best_acc = val_acc1
@@ -212,22 +199,21 @@ def main(args):
             best_state_dict = copy.deepcopy(network.state_dict())
             best_epoch = epoch+1
         save_checkpoint({
-                'epoch': epoch + 1,
-                'base_state_dict': base_model.state_dict(),
-                'best_acc': best_acc,
-                'scheduler' : scheduler.state_dict(),
-                'optimizer' : optimizer.state_dict(),
-            }, is_best, prefix=log_file_name
-        )
+                    'epoch': epoch + 1,
+                    'base_state_dict': base_model.state_dict(),
+                    'best_acc': best_acc,
+                    'scheduler' : scheduler.state_dict(),
+                    'optimizer' : optimizer.state_dict(),
+                }, is_best, prefix=log_file_name
+            )
 
-        logger.log('\t\t Valid eval after epoch: loss:{:.4f}\tlatest_acc:{:.2f}\tLR:{:.2f} -- best valacc {:.2f}'.format( val_loss,
+        logger.log('\t\t Valid eval after epoch: loss:{:.4f}\tlatest_acc:{:.2f}\tLR:{:.2f} -- best valacc {:.2f}'.format(val_loss,
                                                                                                                         val_acc1,
                                                                                                                         get_mlr(scheduler), 
                                                                                                                         best_acc))
 
 
     network.load_state_dict( best_state_dict )
-    #test_loss, test_acc1, test_acc5 = evaluate_model( network, test_loader, criterion, args.eval_batch_size )
     test_loss, test_acc1, test_acc5 = train_eval_loop( args, logger, epoch, optimizer, scheduler, network, test_loader, criterion, args.eval_batch_size, mode='eval' )
         
     logger.log(
@@ -260,7 +246,6 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=8, help="number of data loading workers (default: 8)")
     parser.add_argument("--rand_seed", type=int, default=2007, help="base model seed")
     parser.add_argument("--global_rand_seed", type=int, default=-1, help="global model seed")
-    #add_shared_args(parser)
     parser.add_argument("--batch_size", type=int, default=200, help="Batch size for training.")
     parser.add_argument("--eval_batch_size", type=int, default=200, help="Batch size for testing.")
     parser.add_argument('--epochs', type=int, default=100,help='number of epochs to train')

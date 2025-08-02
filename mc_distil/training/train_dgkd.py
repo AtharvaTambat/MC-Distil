@@ -12,6 +12,7 @@ from torch.distributions import Categorical
 import datetime, pytz
 from typing import Type, Any, Callable, Union, List, Optional
 from PIL import ImageFile
+import torch.utils.data as data
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import copy
@@ -23,20 +24,19 @@ from ..models.model_dict import get_model_from_name
 from ..utils.core import get_model_infos
 from ..utils.logging import AverageMeter, ProgressMeter, time_string, convert_secs2time
 from ..utils.initialization import prepare_logger, prepare_seed
-from ..data.datasets import get_datasets
-import torch.utils.data as data
+from ..data.get_dataset_with_transform import get_datasets
 from ..utils.disk import obtain_accuracy, get_mlr, save_checkpoint, evaluate_model
 
-def m__get_prefix( args ):
+def m__get_prefix(args):
     prefix = args.file_name + '_' + args.dataset + '-' + args.model_name
     return prefix
 
-def get_model_prefix( args ):
-    prefix = os.path.join(args.save_dir, m__get_prefix( args ))
+def get_model_prefix(args):
+    prefix = os.path.join(args.save_dir, m__get_prefix(args))
     return prefix
 
 # used just for evaluation
-def cifar_100_train_eval_loop( args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval' ):
+def cifar_100_train_eval_loop(args, logger, epoch, optimizer, scheduler, network, xloader, criterion, batch_size, mode='eval'):
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
@@ -85,24 +85,16 @@ def main(args):
     assert torch.cuda.is_available(), "CUDA is not available."
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
-    # torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.deterministic = True
     torch.set_num_threads(args.workers)
     criterion = nn.CrossEntropyLoss()
 
     dataset=args.dataset
     if dataset=="cifar100" or dataset=="cifar10":
-        
-        train_data, test_data, xshape, class_num = get_datasets(
-        args.dataset, args.data_path, args.cutout_length
-        )
-        train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//10, 
-                                                            len(train_data)//10])
-    
-    
+        train_data, test_data, xshape, class_num = get_datasets(args.dataset, args.data_path, args.cutout_length)
+        train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//10, len(train_data)//10])
     else:
-        train_data, test_data, xshape, class_num = get_datasets(
-        args.dataset, args.data_path, args.cutout_length
-        )
+        train_data, test_data, xshape, class_num = get_datasets(args.dataset, args.data_path, args.cutout_length)
         train_data, valid_data = data.random_split(train_data, [len(train_data)-len(train_data)//5,  len(train_data)//5])
         test_data, valid_data = data.random_split(valid_data, [len(valid_data)-len(valid_data)//2,  len(valid_data)//2])
     
@@ -135,7 +127,7 @@ def main(args):
     logger.log("Train:{}\t, Valid:{}\t, Test:{}\n".format(len(train_data),
                                                           len(valid_data),
                                                           len(test_data)))
-    Arguments = namedtuple("Configure", ('class_num','dataset')  )
+    Arguments = namedtuple("Configure", ('class_num','dataset'))
     md_dict = { 'class_num' : class_num, 'dataset' : args.dataset }
     model_config = Arguments(**md_dict)
 
@@ -145,13 +137,12 @@ def main(args):
     best_state_dict= [i for i in range(k)]
 
     for i in range(k):
-        base_model[i] = get_model_from_name( model_config, ta_name[i] )
+        base_model[i] = get_model_from_name(model_config, ta_name[i])
         if i==k-1:
-            logger.log("Student {} + {}:".format(i, ta_name[i]) )  
+            logger.log("Student {} + {}:".format(i, ta_name[i]))  
         else:
-            logger.log("TA {} + {}:".format(i, ta_name[i]) )   
+            logger.log("TA {} + {}:".format(i, ta_name[i]))   
     
-        # ce_ptrained_path = "./pretrained/disk-CE-cifar100-ResNet10_s-model_best.pth.tar"
         ce_ptrained_path = "./ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
                             "model_best.pth.tar".format(args.rand_seed,
                                                         #args.sched_cycles,
@@ -170,10 +161,11 @@ def main(args):
     for i in range(k):
         base_model[i] = base_model[i].cuda()
         network[i] = base_model[i] 
-        best_state_dict[i] = copy.deepcopy( base_model[i].state_dict() )
-    #testing pretrained student
+        best_state_dict[i] = copy.deepcopy(base_model[i].state_dict())
+        
+    # testing pretrained student
     for i in range(k):
-        test_loss, test_acc1, test_acc5 = evaluate_model( network[i], test_loader, criterion, args.eval_batch_size )
+        test_loss, test_acc1, test_acc5 = evaluate_model(network[i], test_loader, criterion, args.eval_batch_size)
         logger.log(
         "***{:s}*** before training [Student(CE)] {} Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
             time_string(),i,
@@ -184,19 +176,16 @@ def main(args):
             100 - test_acc5,
         )
         )
-    # # set student training up - not training all the TAs - only one optimizer
-    # optimizer_s=[i for i in range(k)]
-    # scheduler_s=[i for i in range(k)]
-    
+    # set student training up - not training all the TAs - only one optimizer    
     optimizer_s = torch.optim.SGD(base_model[k-1].parameters(), args.lr, momentum=args.momentum, weight_decay=args.wd)
     scheduler_s = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer_s, args.epochs//args.sched_cycles)
     logger.log("Scheduling LR update to student no {}, {} time at {}-epoch intervals".format(k,args.sched_cycles, 
                                                                                         args.epochs//args.sched_cycles))
 
     # TEACHER
-    Teacher_model = get_model_from_name( model_config, args.teacher )
+    Teacher_model = get_model_from_name(model_config, args.teacher)
     
-    teach_PATH = "../MetaNet_application_durga/ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
+    teach_PATH = "../../ce_results/CE_with_seed-{}_cycles-1_{}-{}"\
                     "model_best.pth.tar".format(args.rand_seed,
                                                 args.dataset,
                                                 args.teacher)
@@ -207,7 +196,7 @@ def main(args):
     network_t.eval()
 
     #testing teacher
-    test_loss, test_acc1, test_acc5 = evaluate_model( network_t, test_loader, nn.CrossEntropyLoss(), args.eval_batch_size )
+    test_loss, test_acc1, test_acc5 = evaluate_model(network_t, test_loader, nn.CrossEntropyLoss(), args.eval_batch_size)
     logger.log(
         "***{:s}*** [Teacher] Test loss = {:.6f}, accuracy@1 = {:.2f}, accuracy@5 = {:.2f}, error@1 = {:.2f}, error@5 = {:.2f}".format(
             time_string(),
@@ -313,7 +302,6 @@ def main(args):
                 'scheduler_s' : scheduler_s.state_dict(),
                 'optimizer_s' : optimizer_s.state_dict(),
             }, is_best, prefix=log_file_name)
-        #val_losses.append(val_loss)
         logger.log('std {} Valid eval after epoch: loss:{:.4f}\tlatest_acc:{:.2f}\tLR:{:.4f} -- best valacc {:.2f}'.format( i,val_loss,
                                                                                                                         val_acc1,
                                                                                                                         get_mlr(scheduler_s), 
@@ -352,7 +340,6 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=8, help="number of data loading workers (default: 8)")
     parser.add_argument("--rand_seed", type=int, help="base model seed")
     parser.add_argument("--global_rand_seed", type=int, default=-1, help="global model seed")
-    #add_shared_args(parser)
     parser.add_argument("--batch_size", type=int, default=200, help="Batch size for training.")
     parser.add_argument("--eval_batch_size", type=int, default=200, help="Batch size for testing.")
     parser.add_argument('--epochs', type=int, default=100,help='number of epochs to train')
