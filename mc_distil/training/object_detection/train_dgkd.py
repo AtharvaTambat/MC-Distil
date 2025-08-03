@@ -301,7 +301,7 @@ def main():
     parser.add_argument("--lr", type=float, default=0.001, help="Target learning rate after warm-up.")
     parser.add_argument("--wd", type=float, default=0.0001, help="Weight decay.")
     parser.add_argument("--alpha_kd", type=float, default=0.7, help="Weighting factor for the total KD loss.")
-    parser.add_-argument("--temperature", type=float, default=5.0, help="Temperature for softening logits.")
+    parser.add_argument("--temperature", type=float, default=5.0, help="Temperature for softening logits.")
     parser.add_argument("--workers", type=int, default=8, help="Number of data loader workers.")
     parser.add_argument("--gpus", type=str, default='0', help="GPU IDs to use (e.g., '0' or '0,1').")
     args = parser.parse_args()
