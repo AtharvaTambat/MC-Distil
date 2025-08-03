@@ -38,7 +38,7 @@ for (( i=1; i < ${#CHAIN_ARCHS[@]}; i++ )); do
     student_initial_ckpt="${CHAIN_INITIAL_CKPTS[$i]}"
     step_output_dir="${CHECKPOINT_DIR}/step_${i}_${teacher_arch}_to_${student_arch}"
     
-    python3 mc_distil.training.object_detection.train_takd.py \
+    python3 mc_distil.training.object_detection.train_takd \
         --data_path "$DATA_DIR" \
         --output_dir "$step_output_dir" \
         --gpus "$GPUS" \
