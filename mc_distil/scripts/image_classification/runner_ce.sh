@@ -46,7 +46,6 @@ base_name="ResNet50"
 echo "S=$base_name"
 
 
-
 CUDA_VISIBLE_DEVICES="4"  python3 -m mc_distil.training.image_classification.train_CE --dataset $dataset --data_path $data_path \
         --model_name $base_name --save_dir $save_dir \
 	--eval_batch_size 800 --batch_size 800  \
