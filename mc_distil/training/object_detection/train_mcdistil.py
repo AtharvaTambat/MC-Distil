@@ -140,7 +140,7 @@ class MetaKD_FRCNN(pl.LightningModule):
         self.val_maps = torch.nn.ModuleList([MeanAveragePrecision(box_format='xyxy') for _ in self.students])
 
     def _make_frcnn(self, backbone_name: str) -> FasterRCNN:
-        bb = resnet_fpn_backbone(backbone_name, pretrained=True)
+        bb = resnet_fpn_backbone(backbone_name, pretrained=False)
         return FasterRCNN(bb, self.hparams.num_classes)
 
     def _load_ckpt(self, model: torch.nn.Module, path: str):
